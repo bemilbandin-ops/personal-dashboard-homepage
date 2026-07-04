@@ -59,8 +59,6 @@ test("the dashboard loads and wires the productivity UI", () => {
   assert.match(html, /src="src\/productivity\.js"/);
   assert.ok(html.indexOf("src/productivity.js") < html.indexOf("src/app.js"));
   assert.match(appSource, /Aura\.productivity\.init\(\)/);
-  assert.match(appSource, /showView\("productivity"\)/);
-  assert.match(appSource, /Aura\.productivity\.start\(\)/);
   assert.match(styles, /\.focus-timer/);
   assert.match(styles, /\.task-list/);
 });

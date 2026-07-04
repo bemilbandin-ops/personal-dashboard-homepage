@@ -15,7 +15,7 @@ Use Aura as:
 - **Custom Home:** Choose which shortcuts appear on Home, with a maximum of six.
 - **Productivity:** Persistent focus timer and task list with add, complete, and delete actions.
 - **Atmosphere:** WebGL animated background with enabled state, intensity, speed, and color presets.
-- **Widgets:** Clock, static Fristad weather, temperature-unit toggle, and auto-saving scratchpad.
+- **Widgets:** Clock, configurable live weather with cached fallback, temperature-unit toggle, and auto-saving scratchpad.
 - **Preferences:** Persist clock, temperature, search engine, widget visibility, shortcuts, tasks, and atmosphere settings.
 - **Responsive layout:** Desktop and mobile layouts without horizontal overflow.
 - **Chrome new tab:** The included Manifest V3 file replaces Chrome's new-tab page.
@@ -119,7 +119,7 @@ GitHub Pages and Vercel support Aura's browser features and web shortcuts. They 
 Run every JavaScript test from PowerShell:
 
 ```powershell
-node --test tests\navigation.test.mjs tests\shortcuts.test.mjs tests\productivity.test.mjs tests\atmosphere.test.mjs
+node --test tests
 ```
 
 Run the launcher security tests without opening an application:
