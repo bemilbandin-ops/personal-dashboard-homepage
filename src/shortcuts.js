@@ -58,16 +58,6 @@ Aura.shortcuts = {
     if (item.type === "windows") return Aura.launcher?.urlFor?.(item.target) || "";
     return item.target;
   },
-  openShortcutEditor() {
-    const dialog = document.getElementById("settings-dialog");
-    const section = document.querySelector(".shortcut-settings");
-    this.clearEditor();
-    if (!dialog.open) dialog.showModal();
-    requestAnimationFrame(() => {
-      section?.scrollIntoView({ block: "start" });
-      document.getElementById("shortcut-title")?.focus();
-    });
-  },
   renderHome() {
     const root = document.getElementById("spaces");
     root.replaceChildren();
@@ -91,13 +81,12 @@ Aura.shortcuts = {
     const add = document.createElement("button");
     add.type = "button";
     add.className = "space-card add-card";
-    add.setAttribute("aria-label", "Add shortcut");
     const mark = document.createElement("span");
     mark.textContent = "+";
     const label = document.createElement("b");
-    label.textContent = "Add Shortcut";
+    label.textContent = "Add New";
     add.append(mark, label);
-    add.addEventListener("click", () => this.openShortcutEditor());
+    add.addEventListener("click", () => document.getElementById("settings-dialog").showModal());
     root.append(add);
   },
   renderLibrary() {
