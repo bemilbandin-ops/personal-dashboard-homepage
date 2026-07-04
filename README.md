@@ -61,14 +61,14 @@ After installation, reload the page or reload the unpacked Chrome extension befo
 
 ### Security
 
-Never commit either of these generated values:
+The tracked `src/launcher-config.js` always contains an empty token. The installer generates both local credential files, which are ignored by Git:
 
 - `launcher-helper/secret.txt`
-- A generated token inside `src/launcher-config.js`
+- `src/launcher-config.local.js`
 
-The secret file is ignored by Git. The committed `src/launcher-config.js` intentionally contains an empty token; running the installer modifies that file only on your machine.
+Any token previously committed to the repository is compromised and must be rotated. Run the installer again to generate a new token before using Windows shortcuts.
 
-To remove the protocol registration and clear the local token:
+To remove the protocol registration, local config, and secret:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\launcher-helper\uninstall.ps1
