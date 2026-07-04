@@ -5,16 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>Ether Focus</title>
-  <link rel="stylesheet" href="src/styles.css?v=compact-glass">
-  <script defer src="src/config.js?v=fristad"></script>
+  <link rel="stylesheet" href="src/styles.css?v=live-weather">
+  <script defer src="src/config.js?v=live-weather"></script>
   <script defer src="src/storage.js"></script>
+  <script defer src="src/weather.js?v=live-weather"></script>
   <script defer src="src/launcher-config.js"></script>
   <script defer src="src/shortcuts.js"></script>
   <script defer src="src/search.js"></script>
-  <script defer src="src/widgets.js"></script>
+  <script defer src="src/widgets.js?v=live-weather"></script>
   <script defer src="src/productivity.js"></script>
   <script defer src="src/atmosphere.js"></script>
-  <script defer src="src/app.js?v=flower-of-life-2"></script>
+  <script defer src="src/app.js?v=live-weather"></script>
 </head>
 <body>
   <canvas id="atmosphere" aria-hidden="true"></canvas>
@@ -80,10 +81,16 @@
         </section>
 
         <section class="widgets" aria-label="Widgets">
-          <button class="card weather" id="weather" aria-label="Toggle temperature unit">
-            <svg class="weather-mark"><use href="#i-sun"/></svg>
-            <div><h2 id="weather-location"></h2><p id="weather-condition"></p></div>
-            <strong><span id="temperature"></span><small id="temperature-unit"></small></strong>
+          <button type="button" class="card weather" id="weather" aria-label="Show weather forecast" aria-expanded="false">
+            <svg class="weather-mark" id="weather-icon"><use href="#i-sun"/></svg>
+            <div class="weather-head">
+              <h2 id="weather-location"></h2>
+              <p id="weather-condition"></p>
+              <p class="weather-detail" id="weather-detail"></p>
+              <small class="weather-updated" id="weather-updated"></small>
+            </div>
+            <strong aria-live="polite"><span id="temperature"></span><small id="temperature-unit"></small></strong>
+            <ul class="weather-forecast" id="weather-forecast" hidden></ul>
           </button>
           <article class="card scratchpad" id="scratchpad-widget">
             <header><h2><svg><use href="#i-note"/></svg>Scratchpad</h2><span id="save-status">Saved</span></header>
