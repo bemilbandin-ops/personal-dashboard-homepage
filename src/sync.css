@@ -1,0 +1,66 @@
+.account-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.account-panel h3 {
+  margin: 0 0 4px;
+}
+
+.account-panel small,
+#sync-status {
+  color: var(--muted);
+}
+
+.account-panel input {
+  width: 100%;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(41,40,46,.55);
+  color: var(--text);
+}
+
+.account-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.account-actions button,
+#logout-button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-hover);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.account-actions button:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+#sync-status {
+  min-height: 1.25em;
+  margin: 0;
+  line-height: 1.4;
+}
+
+#logout-button {
+  justify-self: start;
+}
+
+@media (max-width: 760px) {
+  .account-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
