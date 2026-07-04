@@ -152,8 +152,21 @@ fieldset input { accent-color: #8885f5; }
 #library-web h3, #library-windows h3 { margin: 0 0 10px; }
 .library-shortcut { display: grid; gap: 4px; margin-bottom: 8px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--text); text-decoration: none; }
 .library-shortcut small, .empty-state { color: var(--muted); }
-#productivity-root { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: minmax(260px, .8fr) minmax(360px, 1.2fr); gap: 18px; }
-.focus-timer, .task-panel { padding: 24px; }
+#productivity-root { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: minmax(280px, .85fr) minmax(360px, 1.15fr); gap: 18px; }
+.focus-column { display: grid; gap: 18px; align-content: start; }
+.focus-stats, .focus-timer, .task-panel { padding: 24px; }
+.focus-stats { display: grid; gap: 8px; }
+.focus-stats header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.focus-stats h3 { margin: 0; font-size: 18px; font-weight: 500; }
+.focus-stats header button { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-hover); color: var(--muted); cursor: pointer; }
+.focus-stats > strong { margin-top: 4px; font-size: clamp(38px, 5vw, 58px); line-height: 1; letter-spacing: -.055em; }
+.focus-stats p { margin: 0; color: var(--muted); font-size: 13px; }
+#focus-break-note { margin-top: 2px; color: rgba(194,193,255,.78); }
+.focus-week-bars { height: 86px; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; list-style: none; }
+.focus-week-bar { min-width: 0; display: grid; grid-template-rows: 1fr auto; align-items: end; gap: 7px; }
+.focus-week-bar span { height: var(--bar-height); min-height: 4px; border-radius: 999px 999px 4px 4px; background: rgba(194,193,255,.35); }
+.focus-week-bar.today span { background: linear-gradient(180deg, rgba(233,179,255,.85), rgba(194,193,255,.65)); box-shadow: 0 0 16px rgba(194,193,255,.12); }
+.focus-week-bar small { overflow: hidden; color: var(--muted); font-size: 10px; text-align: center; text-overflow: clip; text-transform: uppercase; }
 .focus-timer { display: grid; place-items: center; gap: 24px; }
 .focus-timer strong { font-size: clamp(64px, 7vw, 96px); line-height: 1; letter-spacing: -.06em; }
 .focus-timer div, #task-form { display: flex; gap: 8px; }
