@@ -38,8 +38,19 @@ test("navigation selects one view, tracks active state, and normalizes the hash"
   assert.match(app, /function showView\(name\)/);
   assert.match(app, /view\.hidden\s*=\s*view\.dataset\.view\s*!==\s*selected/);
   assert.match(app, /button\.classList\.toggle\("active",\s*button\.dataset\.viewTarget\s*===\s*selected\)/);
-  assert.match(app, /history\.replaceState\(null,\s*"",\s*`#\$\{selected\}`\)/);
+  assert.match(app, /history\.replaceState\(null,\s*"",\s*nextHash\)/);
   assert.match(app, /showView\(location\.hash\.slice\(1\)\s*\|\|\s*"home"\)/);
+});
+
+test("navigation follows later hash changes without redundant history writes", () => {
+  assert.match(app, /addEventListener\("hashchange",\s*showHashView\)/);
+  assert.match(app, /if\s*\(location\.hash\s*!==\s*nextHash\)\s*history\.replaceState/);
+});
+
+test("selected navigation exposes aria-current and clears it from other items", () => {
+  assert.match(html, /data-view-target="home"[^>]*aria-current="page"|aria-current="page"[^>]*data-view-target="home"/);
+  assert.match(app, /button\.setAttribute\("aria-current",\s*"page"\)/);
+  assert.match(app, /button\.removeAttribute\("aria-current"\)/);
 });
 
 test("malformed and unknown hashes resolve safely to home", () => {
@@ -47,6 +58,14 @@ test("malformed and unknown hashes resolve safely to home", () => {
   assert.equal(resolveViewName("library"), "library");
   assert.equal(resolveViewName(`\"]`), "home");
   assert.equal(resolveViewName("unknown"), "home");
+});
+
+test("slash shortcut ignores every editable target", () => {
+  const isEditableTarget = loadFunction(app, "isEditableTarget");
+  for (const tagName of ["INPUT", "TEXTAREA", "SELECT"])
+    assert.equal(isEditableTarget({ tagName }), true);
+  assert.equal(isEditableTarget({ tagName: "DIV", isContentEditable: true }), true);
+  assert.equal(isEditableTarget({ tagName: "BUTTON", isContentEditable: false }), false);
 });
 
 test("mobile keeps a compact non-overflowing view navigation", () => {

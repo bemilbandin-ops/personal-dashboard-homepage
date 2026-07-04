@@ -10,7 +10,7 @@ Aura.config = {
       duckduckgo: "https://duckduckgo.com/?q="
     }
   },
-  weather: { location: "San Francisco", condition: "Sunny", tempC: 22 },
+  weather: { location: "Fristad", condition: "Partly cloudy", tempC: 18 },
   spaces: [
     { id: "github", title: "GitHub", type: "web", target: "https://github.com", showOnHome: true, icon: "code", color: "neutral" },
     { id: "youtube", title: "YouTube", type: "web", target: "https://youtube.com", showOnHome: true, icon: "play", color: "red" },

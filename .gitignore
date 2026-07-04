@@ -1,0 +1,3 @@
+__pycache__/
+*.py[cod]
+launcher-helper/secret.txt

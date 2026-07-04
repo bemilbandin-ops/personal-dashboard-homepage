@@ -347,7 +347,7 @@ Check enabled/disabled, three intensity levels, minimum/maximum speed, and all p
 - Modify: `index.html`
 - Modify: `src/shortcuts.js`
 
-- [ ] **Step 1: Write failing launcher parser tests**
+- [x] **Step 1: Write failing launcher parser tests**
 
 Create temporary `.exe` and `.lnk` files and test:
 
@@ -378,7 +378,7 @@ Run: `python -m unittest discover -s tests -p "test_launcher.py" -v`
 
 Expected: FAIL because `launcher-helper/launcher.py` does not exist.
 
-- [ ] **Step 2: Implement strict parsing and launch**
+- [x] **Step 2: Implement strict parsing and launch**
 
 `launcher.py` must define:
 
@@ -400,7 +400,7 @@ def validate_target(raw: str) -> Path:
 
 `main()` reads `secret.txt`, parses `sys.argv[1]`, then calls `os.startfile(path)`. It catches parsing/validation errors and exits nonzero without launching.
 
-- [ ] **Step 3: Implement per-user installation**
+- [x] **Step 3: Implement per-user installation**
 
 Create the default `src/launcher-config.js` as `window.Aura = window.Aura || {}; Aura.launcherToken = "";`.
 
@@ -410,7 +410,7 @@ Create the default `src/launcher-config.js` as `window.Aura = window.Aura || {};
 
 `uninstall.ps1` removes only `HKCU:\Software\Classes\aura-launch` and clears the generated token file/config value.
 
-- [ ] **Step 4: Generate launcher URLs in the dashboard**
+- [x] **Step 4: Generate launcher URLs in the dashboard**
 
 Load `launcher-config.js` before `shortcuts.js`. Add:
 
@@ -427,7 +427,7 @@ Aura.launcher = {
 
 If the token is empty, Windows entries show “Install launcher” instead of an active launch link.
 
-- [ ] **Step 5: Run launcher tests without launching a real app**
+- [x] **Step 5: Run launcher tests without launching a real app**
 
 Run: `python -m unittest discover -s tests -p "test_launcher.py" -v`
 
@@ -441,7 +441,7 @@ Expected: all parser/validation tests pass. Do not invoke `os.startfile` in auto
 - Modify: `manifest.json` only if new local scripts are not already covered by the default extension CSP
 - Test: all test files
 
-- [ ] **Step 1: Change static weather configuration**
+- [x] **Step 1: Change static weather configuration**
 
 Set:
 
@@ -451,7 +451,7 @@ weather: { location: "Fristad", condition: "Partly cloudy", tempC: 18 }
 
 Keep the existing Celsius/Fahrenheit behavior.
 
-- [ ] **Step 2: Run all automated checks**
+- [x] **Step 2: Run all automated checks**
 
 Run:
 
@@ -462,7 +462,7 @@ python -m unittest discover -s tests -p "test_launcher.py" -v
 
 Expected: every JS and Python test passes with zero failures.
 
-- [ ] **Step 3: Run desktop browser QA at 1280×720**
+- [x] **Step 3: Run desktop browser QA at 1280×720**
 
 Verify:
 
@@ -475,10 +475,10 @@ Verify:
 - Settings dialog remains usable with the larger shortcut editor.
 - No relevant console errors or warnings.
 
-- [ ] **Step 4: Run mobile QA at 390×844**
+- [x] **Step 4: Run mobile QA at 390×844**
 
 Verify normal vertical scrolling, no horizontal overflow, readable forms, usable task controls, both Library groups, and accessible dialog close/save controls.
 
-- [ ] **Step 5: Install and test the protocol manually only after user approval**
+- [x] **Step 5: Install and test the protocol manually only after user approval**
 
 Run `launcher-helper\install.ps1`, add a harmless existing Windows shortcut through Preferences, click it once, and confirm the intended application opens. Then verify no `launcher.py`/`pythonw.exe` process remains after launch. Installation mutates the current user registry and therefore requires explicit approval at execution time.
