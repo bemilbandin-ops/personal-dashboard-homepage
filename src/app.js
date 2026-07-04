@@ -43,22 +43,31 @@ window.Aura = window.Aura || {};
   document.querySelectorAll("[data-open-settings]").forEach(button => button.addEventListener("click", openSettings));
   Aura.shortcuts.init();
   Aura.productivity.init();
+  Aura.timeTools.init();
+  Aura.notes.init();
 
   const controls = {
     clock: document.getElementById("setting-clock"),
     temp: document.getElementById("setting-temp"),
     engine: document.getElementById("setting-engine"),
     weather: document.getElementById("setting-weather"),
-    scratchpad: document.getElementById("setting-scratchpad")
+    scratchpad: document.getElementById("setting-scratchpad"),
+    weatherLocation: document.getElementById("weather-location-input"),
+    weatherLocationSave: document.getElementById("weather-location-save"),
+    weatherLocationStatus: document.getElementById("weather-location-status")
   };
+  const preferenceControls = [controls.clock, controls.temp, controls.engine, controls.weather, controls.scratchpad];
+
   function syncSettings() {
     controls.clock.checked = preferences.is24Hour;
     controls.temp.checked = preferences.isCelsius;
     controls.engine.value = preferences.searchEngine;
     controls.weather.checked = preferences.showWeather;
     controls.scratchpad.checked = preferences.showScratchpad;
+    if (controls.weatherLocation) controls.weatherLocation.value = Aura.weather?.getLocation?.().location || Aura.config.weather.location;
   }
-  Object.values(controls).forEach(control => control.addEventListener("change", () => {
+
+  preferenceControls.forEach(control => control.addEventListener("change", () => {
     preferences.is24Hour = controls.clock.checked;
     preferences.isCelsius = controls.temp.checked;
     preferences.searchEngine = controls.engine.value;
@@ -70,16 +79,31 @@ window.Aura = window.Aura || {};
     Aura.widgets.applyVisibility();
   }));
 
-  document.getElementById("clock-toggle").addEventListener("click", () => Aura.widgets.toggleClock());
+  controls.weatherLocationSave?.addEventListener("click", async () => {
+    const status = controls.weatherLocationStatus;
+    try {
+      if (status) status.textContent = "Updating location…";
+      const location = await Aura.weather.setLocation(controls.weatherLocation.value);
+      controls.weatherLocation.value = location.location;
+      if (status) status.textContent = `Weather set to ${location.location}.`;
+    } catch (error) {
+      if (status) status.textContent = error.message || "Could not update weather location.";
+    }
+  });
+
+  document.getElementById("clock-toggle").addEventListener("click", () => Aura.timeTools.open());
   document.getElementById("weather").addEventListener("click", event => Aura.widgets.toggleForecast(event));
   document.getElementById("reset-data").addEventListener("click", () => {
-    if (confirm("Reset Aura notes and preferences?")) {
+    if (confirm("Reset all Aura notes, alarms, focus history and preferences?")) {
       Aura.storage.clear();
       location.reload();
     }
   });
   document.addEventListener("keydown", event => {
-    if (event.key === "Escape" && dialog.open) dialog.close();
+    if (event.key === "Escape") {
+      if (dialog.open) dialog.close();
+      if (document.getElementById("time-tools-dialog")?.open) document.getElementById("time-tools-dialog").close();
+    }
     if (event.key === "/" && resolveViewName(location.hash.slice(1)) === "home" && !isEditableTarget(event.target)) {
       event.preventDefault();
       document.getElementById("search-input").focus();
