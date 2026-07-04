@@ -10,7 +10,11 @@ Aura.config = {
       duckduckgo: "https://duckduckgo.com/?q="
     }
   },
-  weather: { location: "Fristad", condition: "Partly cloudy", tempC: 18 },
+  weather: {
+    location: "Fristad",
+    latitude: 57.8248,
+    longitude: 13.0109
+  },
   spaces: [
     { id: "github", title: "GitHub", type: "web", target: "https://github.com", showOnHome: true, icon: "code", color: "neutral" },
     { id: "youtube", title: "YouTube", type: "web", target: "https://youtube.com", showOnHome: true, icon: "play", color: "red" },
