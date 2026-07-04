@@ -71,7 +71,7 @@ window.Aura = window.Aura || {};
   }));
 
   document.getElementById("clock-toggle").addEventListener("click", () => Aura.widgets.toggleClock());
-  document.getElementById("weather").addEventListener("click", () => Aura.widgets.toggleTemperature());
+  document.getElementById("weather").addEventListener("click", event => Aura.widgets.toggleForecast(event));
   document.getElementById("deep-work").addEventListener("click", () => {
     showView("productivity");
     Aura.productivity.start();
