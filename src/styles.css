@@ -42,12 +42,7 @@ body[data-intensity="high"] #atmosphere { opacity: 1.35; }
 .sidebar nav a:hover, .sidebar nav button:hover, .sidebar-footer button:hover { color: var(--text); background: var(--panel-hover); }
 .sidebar nav .active { color: var(--text); background: rgba(255,255,255,.065); border-color: var(--line); }
 .sidebar nav .active svg { color: var(--primary); }
-.deep-work {
-  margin-top: auto; min-height: 52px; border: 0; border-radius: 11px; color: #171421; font-weight: 600; cursor: pointer;
-  background: linear-gradient(100deg, rgba(170,168,255,.72), rgba(233,167,255,.72)); box-shadow: 0 12px 28px rgba(194,193,255,.14); transition: transform .2s, filter .2s;
-}
-.deep-work:hover { transform: translateY(-2px); filter: brightness(1.06); }
-.sidebar-footer { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--line); display: grid; gap: 4px; }
+.sidebar-footer { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--line); display: grid; gap: 4px; }
 
 main { position: relative; height: 100vh; margin-left: 280px; padding: 18px 32px 24px; overflow-y: auto; scrollbar-width: none; }
 main::-webkit-scrollbar { display: none; }
@@ -205,7 +200,6 @@ fieldset input { accent-color: #8885f5; }
   .sidebar nav { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-top: 14px; }
   .sidebar nav button { min-width: 0; min-height: 52px; padding: 5px 1px; flex-direction: column; justify-content: center; gap: 3px; font-size: clamp(9px, 2.8vw, 12px); text-align: center; white-space: nowrap; }
   .sidebar nav button svg { width: 18px; height: 18px; }
-  .deep-work { position: absolute; right: 20px; top: 14px; min-height: 42px; margin: 0; padding: 0 18px; }
   main { height: auto; min-height: calc(100vh - 70px); margin: 0; padding: 20px; overflow: visible; }
   .hero { padding: 36px 0 48px; }
   #clock { font-size: clamp(58px, 20vw, 84px); }
