@@ -1,6 +1,8 @@
 window.Aura = window.Aura || {};
 
-(() => {
+(async () => {
+  await Aura.storage.ready?.();
+
   const defaults = {
     is24Hour: Aura.config.clock.format === "24h",
     isCelsius: true,
@@ -46,6 +48,38 @@ window.Aura = window.Aura || {};
   Aura.timeTools.init();
   Aura.notes.init();
 
+  function ensureAccountSyncUi() {
+    if (!document.querySelector('link[data-aura-sync-css="true"]')) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = "src/sync.css?v=sync";
+      link.dataset.auraSyncCss = "true";
+      document.head.append(link);
+    }
+
+    if (document.getElementById("account-sync-title")) return;
+
+    const visibleWidgets = document.querySelector(".settings-panel fieldset");
+    if (!visibleWidgets) return;
+
+    visibleWidgets.insertAdjacentHTML("afterend", `
+      <section class="account-panel" aria-labelledby="account-sync-title">
+        <h3 id="account-sync-title">Account sync</h3>
+        <small>Sync preferences, scratchpad, tasks and focus history across devices.</small>
+        <input id="login-email" name="email" type="email" autocomplete="email" placeholder="Email">
+        <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Password">
+        <div class="account-actions">
+          <button id="login-button" type="button">Log in</button>
+          <button id="signup-button" type="button">Create account</button>
+        </div>
+        <p id="sync-status" role="status">Sync not configured</p>
+        <button id="logout-button" type="button" hidden>Log out</button>
+      </section>
+    `);
+  }
+
+  ensureAccountSyncUi();
+
   const controls = {
     clock: document.getElementById("setting-clock"),
     temp: document.getElementById("setting-temp"),
@@ -54,7 +88,13 @@ window.Aura = window.Aura || {};
     scratchpad: document.getElementById("setting-scratchpad"),
     weatherLocation: document.getElementById("weather-location-input"),
     weatherLocationSave: document.getElementById("weather-location-save"),
-    weatherLocationStatus: document.getElementById("weather-location-status")
+    weatherLocationStatus: document.getElementById("weather-location-status"),
+    loginEmail: document.getElementById("login-email"),
+    loginPassword: document.getElementById("login-password"),
+    loginButton: document.getElementById("login-button"),
+    signupButton: document.getElementById("signup-button"),
+    logoutButton: document.getElementById("logout-button"),
+    syncStatus: document.getElementById("sync-status")
   };
   const preferenceControls = [controls.clock, controls.temp, controls.engine, controls.weather, controls.scratchpad];
 
@@ -66,6 +106,73 @@ window.Aura = window.Aura || {};
     controls.scratchpad.checked = preferences.showScratchpad;
     if (controls.weatherLocation) controls.weatherLocation.value = Aura.weather?.getLocation?.().location || Aura.config.weather.location;
   }
+
+  function setSyncStatus(message) {
+    if (controls.syncStatus) controls.syncStatus.textContent = message;
+  }
+
+  function syncStateMessage() {
+    const state = Aura.sync?.getState?.();
+    if (!state?.configured) return "Sync not configured. Add your Supabase URL and anon key in src/sync.js.";
+    if (state.lastError) return `${state.status}: ${state.lastError.message || state.lastError}`;
+    return state.status || "Not signed in";
+  }
+
+  function refreshAccountUi() {
+    const configured = Aura.sync?.isConfigured?.() === true;
+    const user = Aura.sync?.getUser?.();
+    const signedIn = Boolean(user);
+
+    setSyncStatus(syncStateMessage());
+    [controls.loginEmail, controls.loginPassword, controls.loginButton, controls.signupButton].forEach(control => {
+      if (control) control.disabled = !configured || signedIn;
+    });
+    if (controls.logoutButton) controls.logoutButton.hidden = !signedIn;
+  }
+
+  function getCredentials() {
+    return {
+      email: controls.loginEmail?.value.trim() || "",
+      password: controls.loginPassword?.value || ""
+    };
+  }
+
+  async function handleAuth(action) {
+    const { email, password } = getCredentials();
+    if (!email || !password) {
+      setSyncStatus("Enter email and password.");
+      return;
+    }
+
+    try {
+      setSyncStatus(action === "signUp" ? "Creating account…" : "Logging in…");
+      await Aura.sync[action](email, password);
+      setSyncStatus("Sync ready. Reloading…");
+      location.reload();
+    } catch (error) {
+      setSyncStatus(error.message || "Auth failed.");
+      refreshAccountUi();
+    }
+  }
+
+  controls.loginButton?.addEventListener("click", () => handleAuth("signIn"));
+  controls.signupButton?.addEventListener("click", () => handleAuth("signUp"));
+  controls.loginPassword?.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      handleAuth("signIn");
+    }
+  });
+  controls.logoutButton?.addEventListener("click", async () => {
+    try {
+      setSyncStatus("Logging out…");
+      await Aura.sync.signOut();
+      refreshAccountUi();
+    } catch (error) {
+      setSyncStatus(error.message || "Logout failed.");
+    }
+  });
+  Aura.sync?.onChange?.(() => refreshAccountUi());
 
   preferenceControls.forEach(control => control.addEventListener("change", () => {
     preferences.is24Hour = controls.clock.checked;
@@ -93,10 +200,13 @@ window.Aura = window.Aura || {};
 
   document.getElementById("clock-toggle").addEventListener("click", () => Aura.timeTools.open());
   document.getElementById("weather").addEventListener("click", event => Aura.widgets.toggleForecast(event));
-  document.getElementById("reset-data").addEventListener("click", () => {
+  document.getElementById("reset-data").addEventListener("click", async () => {
     if (confirm("Reset all Aura notes, alarms, focus history and preferences?")) {
-      Aura.storage.clear();
-      location.reload();
+      try {
+        await Aura.storage.clear();
+      } finally {
+        location.reload();
+      }
     }
   });
   document.addEventListener("keydown", event => {
@@ -111,6 +221,7 @@ window.Aura = window.Aura || {};
   });
 
   syncSettings();
+  refreshAccountUi();
   Aura.search.init(preferences);
   Aura.widgets.init(preferences, savePreferences);
   Aura.atmosphere.init(preferences);
