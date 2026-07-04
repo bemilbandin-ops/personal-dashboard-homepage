@@ -2,6 +2,7 @@ window.Aura = window.Aura || {};
 
 Aura.weather = {
   cacheKey: "weather:current",
+  locationKey: "weather:location",
   refreshMs: 25 * 60 * 1000,
   current: null,
   timer: null,
@@ -23,6 +24,56 @@ Aura.weather = {
 
   getCurrent() {
     return this.current || this.getCached() || this.getFallback("Weather unavailable", "error");
+  },
+
+  getLocation() {
+    const stored = Aura.storage?.get(this.locationKey, null);
+    const fallback = Aura.config.weather;
+    if (stored && Number.isFinite(Number(stored.latitude)) && Number.isFinite(Number(stored.longitude))) {
+      return {
+        location: stored.location || fallback.location,
+        latitude: Number(stored.latitude),
+        longitude: Number(stored.longitude)
+      };
+    }
+    return fallback;
+  },
+
+  async setLocation(query) {
+    const location = await this.resolveLocation(query);
+    Aura.storage?.set(this.locationKey, location);
+    Aura.storage?.set(this.cacheKey, null);
+    this.current = this.getFallback("Loading weather…", "loading");
+    this.notify();
+    await this.refresh(true);
+    return location;
+  },
+
+  async resolveLocation(query) {
+    const value = String(query || "").trim();
+    if (!value) throw new Error("Enter a city or coordinates.");
+
+    const coordinates = value.match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+    if (coordinates) {
+      return {
+        location: `${coordinates[1]}, ${coordinates[2]}`,
+        latitude: Number(coordinates[1]),
+        longitude: Number(coordinates[2])
+      };
+    }
+
+    const params = new URLSearchParams({ name: value, count: "1", language: "en", format: "json" });
+    const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params.toString()}`, { cache: "no-store" });
+    if (!response.ok) throw new Error("Location lookup failed.");
+    const data = await response.json();
+    const result = data.results?.[0];
+    if (!result) throw new Error("Location not found.");
+
+    return {
+      location: [result.name, result.admin1, result.country_code].filter(Boolean).join(", "),
+      latitude: Number(result.latitude),
+      longitude: Number(result.longitude)
+    };
   },
 
   async refresh(force = false) {
@@ -56,7 +107,7 @@ Aura.weather = {
   },
 
   buildUrl() {
-    const config = Aura.config.weather;
+    const config = this.getLocation();
     const params = new URLSearchParams({
       latitude: config.latitude,
       longitude: config.longitude,
@@ -72,9 +123,10 @@ Aura.weather = {
     const current = data.current || {};
     const daily = data.daily || {};
     const code = Number(current.weather_code);
+    const location = this.getLocation();
 
     return {
-      location: Aura.config.weather.location,
+      location: location.location,
       tempC: this.round(current.temperature_2m),
       condition: this.describe(code),
       weatherCode: code,
@@ -151,8 +203,9 @@ Aura.weather = {
   },
 
   getFallback(condition, status, error = null) {
+    const location = this.getLocation();
     return {
-      location: Aura.config.weather.location,
+      location: location.location,
       tempC: null,
       condition,
       weatherCode: null,
@@ -169,7 +222,8 @@ Aura.weather = {
 
   getCached() {
     const cached = Aura.storage?.get(this.cacheKey, null);
-    return cached ? { ...cached, status: cached.status === "ready" ? "ready" : "cached" } : null;
+    const location = this.getLocation();
+    return cached ? { ...cached, location: cached.location || location.location, status: cached.status === "ready" ? "ready" : "cached" } : null;
   },
 
   save(weather) {
