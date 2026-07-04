@@ -5,7 +5,7 @@ import vm from "node:vm";
 
 function loadShortcuts(Aura = {
   config: { spaces: [] },
-  storage: { get: (_key, fallback) => fallback, set() {} }
+  storage: { get: (_key, fallback) => fallback, set: () => true }
 }) {
   const context = {
     crypto: { randomUUID: () => "generated-id" },
@@ -72,7 +72,7 @@ test("load reads stored shortcuts and falls back to configured spaces", () => {
         assert.equal(fallback, spaces);
         return stored ?? fallback;
       },
-      set() {}
+      set: () => true
     }
   });
 
@@ -91,11 +91,11 @@ test("save normalizes shortcuts before writing them", () => {
     config: { spaces: [] },
     storage: {
       get: (_key, fallback) => fallback,
-      set(key, value) { write = [key, value]; }
+      set(key, value) { write = [key, value]; return true; }
     }
   });
 
-  shortcuts.save([{ title: " Docs ", target: " https://example.com " }, { title: "", target: "spotify:" }]);
+  assert.equal(shortcuts.save([{ title: " Docs ", target: " https://example.com " }, { title: "", target: "spotify:" }]), true);
   assert.equal(JSON.stringify(write), JSON.stringify(["shortcuts", [
     { id: "generated-id", title: "Docs", type: "web", target: "https://example.com", showOnHome: true }
   ]]));
@@ -108,7 +108,7 @@ test("upsert replaces the record being edited", () => {
     { id: "edit", title: "Old", type: "web", target: "https://old.example", showOnHome: true }
   ];
   shortcuts.editingId = "edit";
-  shortcuts.save = () => {};
+  shortcuts.save = () => true;
   shortcuts.renderAll = () => {};
 
   assert.equal(shortcuts.upsert({ title: "New", type: "web", target: "https://new.example", showOnHome: false }), "");
@@ -118,10 +118,29 @@ test("upsert replaces the record being edited", () => {
   ]));
 });
 
+test("failed upsert keeps the shortcut and editor state", () => {
+  const shortcuts = loadShortcuts();
+  shortcuts.items = [{ id: "edit", title: "Old", type: "web", target: "https://old.example", showOnHome: true }];
+  shortcuts.editingId = "edit";
+  shortcuts.save = () => false;
+  let rendered = false;
+  shortcuts.renderAll = () => { rendered = true; };
+
+  assert.equal(
+    shortcuts.upsert({ title: "New", type: "web", target: "https://new.example", showOnHome: false }),
+    "Could not save shortcut."
+  );
+  assert.equal(JSON.stringify(shortcuts.items), JSON.stringify([
+    { id: "edit", title: "Old", type: "web", target: "https://old.example", showOnHome: true }
+  ]));
+  assert.equal(shortcuts.editingId, "edit");
+  assert.equal(rendered, false);
+});
+
 test("remove deletes one record", () => {
   const shortcuts = loadShortcuts();
   shortcuts.items = [{ id: "keep" }, { id: "remove" }];
-  shortcuts.save = () => {};
+  shortcuts.save = () => true;
   shortcuts.renderAll = () => {};
 
   shortcuts.remove("remove");

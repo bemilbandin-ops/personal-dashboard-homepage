@@ -2,6 +2,7 @@ window.Aura = window.Aura || {};
 
 Aura.storage = {
   prefix: "aura:",
+
   get(key, fallback) {
     try {
       const value = localStorage.getItem(this.prefix + key);
@@ -10,10 +11,19 @@ Aura.storage = {
       return fallback;
     }
   },
+
   set(key, value) {
-    localStorage.setItem(this.prefix + key, JSON.stringify(value));
+    try {
+      localStorage.setItem(this.prefix + key, JSON.stringify(value));
+      return true;
+    } catch {
+      return false;
+    }
   },
+
   clear() {
-    Object.keys(localStorage).filter(key => key.startsWith(this.prefix)).forEach(key => localStorage.removeItem(key));
+    Object.keys(localStorage)
+      .filter(key => key.startsWith(this.prefix))
+      .forEach(key => localStorage.removeItem(key));
   }
 };

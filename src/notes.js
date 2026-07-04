@@ -18,7 +18,7 @@ Aura.notes = {
   },
 
   saveAll() {
-    Aura.storage.set(this.key, this.items);
+    return Aura.storage.set(this.key, this.items);
   },
 
   makeId() {
@@ -36,9 +36,9 @@ Aura.notes = {
     const title = prompt("Note title", firstLine) || firstLine;
     const now = new Date().toISOString();
     this.items = [{ id: this.makeId(), title: title.trim() || "Untitled note", content, createdAt: now, updatedAt: now }, ...this.items].slice(0, 100);
-    this.saveAll();
+    const saved = this.saveAll();
     this.render();
-    this.setStatus("Saved to library");
+    this.setStatus(saved ? "Saved to library" : "Not saved");
   },
 
   loadNote(id) {
@@ -62,6 +62,7 @@ Aura.notes = {
     this.status.textContent = message;
     this.status.classList.remove("saving");
     clearTimeout(this.statusTimer);
+    if (message === "Not saved" || message === "Nothing to save") return;
     this.statusTimer = setTimeout(() => { this.status.textContent = "Saved"; }, 1800);
   },
 
