@@ -3,6 +3,7 @@ window.Aura = window.Aura || {};
 Aura.widgets = {
   timer: null,
   saveTimer: null,
+  sessionStartedAt: Date.now(),
   forecastOpen: false,
   init(preferences, savePreferences) {
     this.preferences = preferences;
@@ -11,11 +12,16 @@ Aura.widgets = {
     this.date = document.getElementById("date");
     this.notes = document.getElementById("scratchpad");
     this.status = document.getElementById("save-status");
+    this.sessionLabel = document.getElementById("active-session");
     this.weatherCard = document.getElementById("weather");
     this.notes.value = Aura.storage.get("scratchpad", "Buy groceries");
     this.notes.addEventListener("input", () => this.queueSave());
     this.updateClock();
-    this.timer = setInterval(() => this.updateClock(), 1000);
+    this.updateActiveSession();
+    this.timer = setInterval(() => {
+      this.updateClock();
+      this.updateActiveSession();
+    }, 1000);
     if (Aura.weather?.init) Aura.weather.init(() => this.renderWeather());
     this.renderWeather();
     this.applyVisibility();
@@ -29,10 +35,16 @@ Aura.widgets = {
       weekday: "long", month: "long", day: "numeric"
     }).format(now).toUpperCase();
   },
-  toggleClock() {
-    this.preferences.is24Hour = !this.preferences.is24Hour;
-    this.savePreferences();
-    this.updateClock();
+  updateActiveSession() {
+    if (!this.sessionLabel) return;
+    const elapsedMinutes = Math.floor((Date.now() - this.sessionStartedAt) / 60000);
+    if (elapsedMinutes < 60) {
+      this.sessionLabel.textContent = `Active session: ${elapsedMinutes}m`;
+      return;
+    }
+    const hours = Math.floor(elapsedMinutes / 60);
+    const minutes = elapsedMinutes % 60;
+    this.sessionLabel.textContent = `Active session: ${hours}h ${minutes}m`;
   },
   renderWeather() {
     const weather = Aura.weather?.getCurrent ? Aura.weather.getCurrent() : Aura.config.weather;
