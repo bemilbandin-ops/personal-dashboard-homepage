@@ -125,7 +125,7 @@ Aura.sync = {
     if (error) throw error;
 
     this.session = data.session;
-    this.user = data.user || data.session?.user || null;
+    this.user = data.session?.user || null;
     if (this.user) {
       this.setStatus(`Signed in as ${this.user.email}`);
       await this.pull();
