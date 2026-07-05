@@ -142,19 +142,6 @@ window.Aura = window.Aura || {};
     if (controls.logoutButton) controls.logoutButton.hidden = !signedIn;
   }
 
-  async function persistCurrentSyncValues() {
-    if (!Aura.sync?.getUser?.()) return;
-
-    Aura.storage.setLocalOnly("preferences", preferences);
-    Aura.storage.setLocalOnly("scratchpad", document.getElementById("scratchpad")?.value || Aura.storage.get("scratchpad", ""));
-    Aura.storage.setLocalOnly("tasks", Array.isArray(Aura.productivity?.tasks) ? Aura.productivity.tasks : Aura.storage.get("tasks", []));
-    Aura.storage.setLocalOnly("focus-history", Array.isArray(Aura.productivity?.history) ? Aura.productivity.history : Aura.storage.get("focus-history", []));
-
-    setSyncStatus("Saving sync data…");
-    await Aura.sync.pushLocal();
-    refreshAccountUi();
-  }
-
   function getCredentials() {
     return {
       email: controls.loginEmail?.value.trim() || "",
@@ -172,7 +159,11 @@ window.Aura = window.Aura || {};
     try {
       setSyncStatus(action === "signUp" ? "Creating account…" : "Logging in…");
       await Aura.sync[action](email, password);
-      await persistCurrentSyncValues();
+      if (Aura.sync?.getUser?.()) {
+        setSyncStatus("Cloud data loaded. Reloading…");
+        location.reload();
+        return;
+      }
       refreshAccountUi();
     } catch (error) {
       setSyncStatus(describeSyncError(error) || "Auth failed.");
@@ -275,5 +266,4 @@ window.Aura = window.Aura || {};
   Aura.search.init(preferences);
   Aura.widgets.init(preferences, savePreferences);
   Aura.atmosphere.init(preferences);
-  persistCurrentSyncValues().catch(error => setSyncStatus(`Cloud save failed: ${describeSyncError(error)}`));
 })();
