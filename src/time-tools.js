@@ -14,8 +14,18 @@ Aura.timeTools = {
     this.renderAlarms();
     this.updateTimerDisplay();
     this.updateStopwatchDisplay();
-    clearInterval(this.tickId);
-    this.tickId = setInterval(() => this.tick(), 500);
+    this.updateTicking();
+  },
+
+  updateTicking() {
+    const shouldTick = this.alarms.length > 0 || this.timer.running || this.stopwatch.running;
+    if (shouldTick && this.tickId === null) {
+      this.tickId = setInterval(() => this.tick(), 500);
+    }
+    if (!shouldTick && this.tickId !== null) {
+      clearInterval(this.tickId);
+      this.tickId = null;
+    }
   },
 
   bind() {
@@ -59,6 +69,7 @@ Aura.timeTools = {
     this.alarms = [...this.alarms, { id: this.makeId(), time, sound, dueAt }].sort((a, b) => new Date(a.dueAt) - new Date(b.dueAt));
     this.saveAlarms();
     this.renderAlarms();
+    this.updateTicking();
     if (status) status.textContent = `Alarm set for ${this.formatDue(dueAt)}.`;
   },
 
@@ -93,6 +104,7 @@ Aura.timeTools = {
         this.alarms = this.alarms.filter(item => item.id !== alarm.id);
         this.saveAlarms();
         this.renderAlarms();
+        this.updateTicking();
       });
       item.append(label, remove);
       list.append(item);
@@ -107,17 +119,20 @@ Aura.timeTools = {
     if (!durationMs) return;
     this.timer = { running: true, remainingMs: durationMs, endsAt: Date.now() + durationMs, sound };
     this.updateTimerDisplay();
+    this.updateTicking();
   },
 
   pauseTimer() {
     if (!this.timer.running) return;
     this.timer = { ...this.timer, running: false, remainingMs: Math.max(0, this.timer.endsAt - Date.now()), endsAt: 0 };
     this.updateTimerDisplay();
+    this.updateTicking();
   },
 
   resetTimer() {
     this.timer = { running: false, remainingMs: 0, endsAt: 0, sound: document.getElementById("timer-sound")?.value || "chime" };
     this.updateTimerDisplay();
+    this.updateTicking();
   },
 
   completeTimer() {
@@ -136,6 +151,7 @@ Aura.timeTools = {
       sound: document.getElementById("stopwatch-sound")?.value || "soft"
     };
     this.updateStopwatchDisplay();
+    this.updateTicking();
   },
 
   pauseStopwatch() {
@@ -147,6 +163,7 @@ Aura.timeTools = {
       startedAt: 0
     };
     this.updateStopwatchDisplay();
+    this.updateTicking();
   },
 
   lapStopwatch() {
@@ -161,6 +178,7 @@ Aura.timeTools = {
     this.stopwatch = { running: false, startedAt: 0, elapsedMs: 0, sound: document.getElementById("stopwatch-sound")?.value || "soft", laps: [] };
     this.updateStopwatchDisplay();
     this.renderLaps();
+    this.updateTicking();
   },
 
   currentStopwatchMs() {
@@ -187,6 +205,7 @@ Aura.timeTools = {
     }
 
     if (this.stopwatch.running) this.updateStopwatchDisplay();
+    this.updateTicking();
   },
 
   updateTimerDisplay() {
