@@ -1,0 +1,4 @@
+.pulse{animation:none;box-shadow:none}
+.sidebar,.search input,.space-card,.card,.settings-fab,dialog,dialog::backdrop{backdrop-filter:none;-webkit-backdrop-filter:none}
+.weather::after{display:none;filter:none}
+.sidebar nav a,.sidebar nav button,.search input,.space-card,.settings-fab{transition:none}
