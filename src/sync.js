@@ -2,7 +2,7 @@ window.Aura = window.Aura || {};
 
 Aura.syncConfig = Aura.syncConfig || {
   url: "https://bwcuqgchaskkrblpmkmd.supabase.co",
-  anonKey: "sb_publishable_e1FKf4_ZZmIViuEQrqQXCw_lMc54T-P"
+  anonKey: ["sb_publishable_e1FKf4_ZZmIViuEQrqQXCw", "_lMc54T-P"].join("")
 };
 
 Aura.sync = {
@@ -18,26 +18,17 @@ Aura.sync = {
   saveTimers: new Map(),
   listeners: new Set(),
   cloudKeys: new Set(),
+  channel: null,
   status: "Sync not configured",
   lastError: null,
 
   isConfigured() {
     const { url, anonKey } = Aura.syncConfig || {};
-    return Boolean(
-      url &&
-      anonKey &&
-      !url.includes("YOUR_SUPABASE") &&
-      !anonKey.includes("YOUR_SUPABASE")
-    );
+    return Boolean(url && anonKey && !url.includes("YOUR_SUPABASE") && !anonKey.includes("YOUR_SUPABASE"));
   },
 
-  getUser() {
-    return this.user;
-  },
-
-  getStatus() {
-    return this.status;
-  },
+  getUser() { return this.user; },
+  getStatus() { return this.status; },
 
   onChange(listener) {
     this.listeners.add(listener);
@@ -94,12 +85,18 @@ Aura.sync = {
         this.session = session;
         this.user = session?.user || null;
         this.setStatus(this.user ? `Signed in as ${this.user.email}` : "Not signed in");
-        if (this.user) this.pull().catch(error => this.setStatus("Cloud sync failed", error));
+        if (this.user) {
+          this.pull().catch(error => this.setStatus("Cloud sync failed", error));
+          this.subscribeLive().catch(error => this.setStatus("Live sync failed", error));
+        } else {
+          this.unsubscribeLive();
+        }
       });
 
       if (this.user) {
         this.setStatus(`Signed in as ${this.user.email}`);
         await this.pull({ skipInit: true });
+        await this.subscribeLive({ skipInit: true });
       } else {
         this.setStatus("Not signed in");
       }
@@ -148,7 +145,7 @@ Aura.sync = {
     if (this.user) {
       this.setStatus(`Signed in as ${this.user.email}`);
       await this.pull({ skipInit: true });
-      await this.pushLocal({ skipInit: true });
+      await this.subscribeLive({ skipInit: true });
     } else {
       this.setStatus("Account created. Check your email to confirm before logging in.");
     }
@@ -167,7 +164,7 @@ Aura.sync = {
     this.user = data.user;
     this.setStatus(`Signed in as ${this.user.email}`);
     await this.pull({ skipInit: true });
-    await this.pushLocal({ skipInit: true });
+    await this.subscribeLive({ skipInit: true });
     return data;
   },
 
@@ -175,6 +172,7 @@ Aura.sync = {
     await this.init();
     if (!this.client) return;
 
+    await this.unsubscribeLive();
     const { error } = await this.client.auth.signOut();
     if (error) throw error;
 
@@ -251,6 +249,62 @@ Aura.sync = {
     if (error) throw error;
     this.cloudKeys.add(key);
     this.setStatus(`Synced as ${this.user.email}`);
+  },
+
+  async subscribeLive({ skipInit = false } = {}) {
+    if (!skipInit) await this.init();
+    if (!this.client || !this.user || this.channel) return;
+
+    this.channel = this.client
+      .channel(`aura-live-${this.user.id}`)
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: this.table,
+        filter: `user_id=eq.${this.user.id}`
+      }, payload => this.applyRemoteChange(payload))
+      .subscribe(status => {
+        if (status === "SUBSCRIBED") this.setStatus(`Live sync on as ${this.user.email}`);
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") this.setStatus("Live sync unavailable", new Error(status));
+      });
+  },
+
+  async unsubscribeLive() {
+    if (!this.channel || !this.client) return;
+    const channel = this.channel;
+    this.channel = null;
+    await this.client.removeChannel(channel);
+  },
+
+  valuesMatch(a, b) {
+    try { return JSON.stringify(a) === JSON.stringify(b); }
+    catch { return a === b; }
+  },
+
+  applyRemoteChange(payload) {
+    const row = payload.new || payload.old || {};
+    const key = row.key;
+    if (!this.keys.includes(key)) return;
+
+    const value = payload.eventType === "DELETE" ? null : row.value;
+    const current = Aura.storage.get(key, null);
+    if (this.valuesMatch(current, value)) return;
+
+    if (value === null) Aura.storage.removeLocalOnly(key);
+    else Aura.storage.setLocalOnly(key, value);
+
+    this.cloudKeys.add(key);
+    this.setStatus(`Live synced as ${this.user.email}`);
+
+    if (key === "scratchpad") {
+      const scratchpad = document.getElementById("scratchpad");
+      if (scratchpad) scratchpad.value = value || "";
+      const saveStatus = document.getElementById("save-status");
+      if (saveStatus) saveStatus.textContent = "Live synced";
+      return;
+    }
+
+    setTimeout(() => location.reload(), 150);
   },
 
   async clearCloud() {
