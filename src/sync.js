@@ -1,7 +1,7 @@
 window.Aura = window.Aura || {};
 
 Aura.syncConfig = Aura.syncConfig || {
-  url: "",
+  url: "https://bwcuqgchaskkrblpmkmd.supabase.co",
   anonKey: ""
 };
 
