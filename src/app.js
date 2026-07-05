@@ -69,11 +69,11 @@ window.Aura = window.Aura || {};
         <input id="login-email" name="email" type="email" autocomplete="email" placeholder="Email">
         <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Password">
         <div class="account-actions">
-          <button id="login-button" type="button">Log in</button>
-          <button id="signup-button" type="button">Create account</button>
+          <button id="login-button" type="button" onclick="window.Aura?.accountSignIn?.()">Log in</button>
+          <button id="signup-button" type="button" onclick="window.Aura?.accountSignUp?.()">Create account</button>
         </div>
         <p id="sync-status" role="status">Sync not configured</p>
-        <button id="logout-button" type="button" hidden>Log out</button>
+        <button id="logout-button" type="button" onclick="window.Aura?.accountSignOut?.()" hidden>Log out</button>
       </section>
     `);
   }
@@ -180,21 +180,46 @@ window.Aura = window.Aura || {};
     }
   }
 
-  controls.loginButton?.addEventListener("click", () => handleAuth("signIn"));
-  controls.signupButton?.addEventListener("click", () => handleAuth("signUp"));
-  controls.loginPassword?.addEventListener("keydown", event => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      handleAuth("signIn");
-    }
-  });
-  controls.logoutButton?.addEventListener("click", async () => {
+  async function handleLogout() {
     try {
       setSyncStatus("Logging out…");
       await Aura.sync.signOut();
       refreshAccountUi();
     } catch (error) {
       setSyncStatus(describeSyncError(error) || "Logout failed.");
+    }
+  }
+
+  Aura.accountSignIn = () => handleAuth("signIn");
+  Aura.accountSignUp = () => handleAuth("signUp");
+  Aura.accountSignOut = () => handleLogout();
+
+  controls.loginButton?.addEventListener("click", event => {
+    event.preventDefault();
+    handleAuth("signIn");
+  });
+  controls.signupButton?.addEventListener("click", event => {
+    event.preventDefault();
+    handleAuth("signUp");
+  });
+  controls.loginPassword?.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      handleAuth("signIn");
+    }
+  });
+  controls.logoutButton?.addEventListener("click", event => {
+    event.preventDefault();
+    handleLogout();
+  });
+  document.addEventListener("click", event => {
+    if (event.target?.id === "login-button") {
+      event.preventDefault();
+      handleAuth("signIn");
+    }
+    if (event.target?.id === "signup-button") {
+      event.preventDefault();
+      handleAuth("signUp");
     }
   });
   Aura.sync?.onChange?.(() => refreshAccountUi());
