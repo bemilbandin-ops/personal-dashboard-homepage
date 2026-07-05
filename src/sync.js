@@ -12,12 +12,15 @@ Aura.sync = {
   user: null,
   session: null,
   initialized: false,
+  initializing: false,
   readyPromise: null,
   sdkPromise: null,
   saveTimers: new Map(),
   listeners: new Set(),
+  cloudKeys: new Set(),
   status: "Sync not configured",
   lastError: null,
+
   isConfigured() {
     const { url, anonKey } = Aura.syncConfig || {};
     return Boolean(
@@ -27,38 +30,46 @@ Aura.sync = {
       !anonKey.includes("YOUR_SUPABASE")
     );
   },
+
   getUser() {
     return this.user;
   },
+
   getStatus() {
     return this.status;
   },
+
   onChange(listener) {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   },
+
   notify() {
     this.listeners.forEach(listener => listener(this.getState()));
   },
+
   getState() {
     return {
       configured: this.isConfigured(),
       user: this.user,
       status: this.status,
-      lastError: this.lastError
+      lastError: this.lastError,
+      cloudKeys: [...this.cloudKeys]
     };
   },
+
   setStatus(status, error = null) {
     this.status = status;
     this.lastError = error;
     this.notify();
   },
+
   async init() {
     if (this.readyPromise) return this.readyPromise;
-
     this.readyPromise = this._init();
     return this.readyPromise;
   },
+
   async _init() {
     if (!this.isConfigured()) {
       this.setStatus("Sync not configured");
@@ -66,15 +77,19 @@ Aura.sync = {
       return;
     }
 
+    this.initializing = true;
+
     try {
       await this.loadSupabaseSdk();
       const { url, anonKey } = Aura.syncConfig;
       this.client = window.supabase.createClient(url, anonKey);
+
       const { data, error } = await this.client.auth.getSession();
       if (error) throw error;
 
       this.session = data.session;
       this.user = data.session?.user || null;
+
       this.client.auth.onAuthStateChange((_event, session) => {
         this.session = session;
         this.user = session?.user || null;
@@ -84,16 +99,18 @@ Aura.sync = {
 
       if (this.user) {
         this.setStatus(`Signed in as ${this.user.email}`);
-        await this.pull();
+        await this.pull({ skipInit: true });
       } else {
         this.setStatus("Not signed in");
       }
     } catch (error) {
       this.setStatus("Cloud sync unavailable", error);
     } finally {
+      this.initializing = false;
       this.initialized = true;
     }
   },
+
   loadSupabaseSdk() {
     if (window.supabase?.createClient) return Promise.resolve();
     if (this.sdkPromise) return this.sdkPromise;
@@ -117,6 +134,7 @@ Aura.sync = {
 
     return this.sdkPromise;
   },
+
   async signUp(email, password) {
     await this.init();
     this.requireClient();
@@ -126,15 +144,18 @@ Aura.sync = {
 
     this.session = data.session;
     this.user = data.session?.user || null;
+
     if (this.user) {
       this.setStatus(`Signed in as ${this.user.email}`);
-      await this.pull();
+      await this.pull({ skipInit: true });
+      await this.pushLocal({ skipInit: true });
     } else {
       this.setStatus("Account created. Check your email to confirm before logging in.");
     }
 
     return data;
   },
+
   async signIn(email, password) {
     await this.init();
     this.requireClient();
@@ -145,9 +166,11 @@ Aura.sync = {
     this.session = data.session;
     this.user = data.user;
     this.setStatus(`Signed in as ${this.user.email}`);
-    await this.pull();
+    await this.pull({ skipInit: true });
+    await this.pushLocal({ skipInit: true });
     return data;
   },
+
   async signOut() {
     await this.init();
     if (!this.client) return;
@@ -157,12 +180,16 @@ Aura.sync = {
 
     this.session = null;
     this.user = null;
+    this.cloudKeys.clear();
     this.setStatus("Not signed in");
   },
+
   requireClient() {
     if (!this.client) throw new Error("Add your Supabase Project URL and anon public key in src/sync.js first.");
   },
-  async pull() {
+
+  async pull({ skipInit = false } = {}) {
+    if (!skipInit) await this.init();
     if (!this.client || !this.user) return;
 
     const { data, error } = await this.client
@@ -178,13 +205,24 @@ Aura.sync = {
       Aura.storage.setLocalOnly(row.key, row.value);
       seen.add(row.key);
     });
+    this.cloudKeys = seen;
 
     await Promise.all(this.keys
       .filter(key => !seen.has(key) && Aura.storage.has(key))
-      .map(key => this.saveNow(key, Aura.storage.get(key, null))));
+      .map(key => this.saveNow(key, Aura.storage.get(key, null), { skipInit: true })));
 
     this.setStatus(`Signed in as ${this.user.email}`);
   },
+
+  async pushLocal({ skipInit = false } = {}) {
+    if (!skipInit) await this.init();
+    if (!this.client || !this.user) return;
+
+    await Promise.all(this.keys
+      .filter(key => Aura.storage.has(key))
+      .map(key => this.saveNow(key, Aura.storage.get(key, null), { skipInit: true })));
+  },
+
   queueSave(key, value) {
     if (!this.keys.includes(key)) return;
 
@@ -195,9 +233,10 @@ Aura.sync = {
     }, 600);
     this.saveTimers.set(key, timer);
   },
-  async saveNow(key, value) {
+
+  async saveNow(key, value, { skipInit = false } = {}) {
     if (!this.keys.includes(key)) return;
-    await this.init();
+    if (!skipInit) await this.init();
     if (!this.client || !this.user) return;
 
     const { error } = await this.client
@@ -205,13 +244,15 @@ Aura.sync = {
       .upsert({
         user_id: this.user.id,
         key,
-        value,
+        value: value === undefined ? null : value,
         updated_at: new Date().toISOString()
       }, { onConflict: "user_id,key" });
 
     if (error) throw error;
+    this.cloudKeys.add(key);
     this.setStatus(`Synced as ${this.user.email}`);
   },
+
   async clearCloud() {
     await this.init();
     if (!this.client || !this.user) return;
@@ -223,6 +264,7 @@ Aura.sync = {
       .in("key", this.keys);
 
     if (error) throw error;
+    this.cloudKeys.clear();
     this.setStatus("Cloud data cleared");
   }
 };
