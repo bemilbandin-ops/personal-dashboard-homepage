@@ -6,11 +6,14 @@
   <meta name="color-scheme" content="dark">
   <title>Ether Focus</title>
   <link rel="stylesheet" href="src/styles.css?v=compact-glass">
-  <script defer src="src/config.js"></script>
+  <script defer src="src/config.js?v=fristad"></script>
   <script defer src="src/storage.js"></script>
+  <script defer src="src/launcher-config.js"></script>
   <script defer src="src/shortcuts.js"></script>
   <script defer src="src/search.js"></script>
   <script defer src="src/widgets.js"></script>
+  <script defer src="src/productivity.js"></script>
+  <script defer src="src/atmosphere.js"></script>
   <script defer src="src/app.js?v=flower-of-life-2"></script>
 </head>
 <body>
@@ -42,7 +45,7 @@
       <p><span class="pulse"></span> Active Session: 45m</p>
     </header>
     <nav aria-label="Dashboard sections">
-      <button type="button" class="active" data-view-target="home"><svg><use href="#i-home"/></svg>Home</button>
+      <button type="button" class="active" data-view-target="home" aria-current="page"><svg><use href="#i-home"/></svg>Home</button>
       <button type="button" data-view-target="productivity"><svg><use href="#i-spark"/></svg>Productivity</button>
       <button type="button" data-view-target="atmosphere"><svg><use href="#i-cloud"/></svg>Atmosphere</button>
       <button type="button" data-view-target="library"><svg><use href="#i-folder"/></svg>Library</button>
@@ -110,12 +113,21 @@
 
   <dialog id="settings-dialog">
     <form method="dialog" class="settings-panel">
-      <header><h2>Preferences</h2><button value="close" aria-label="Close preferences"><svg><use href="#i-close"/></svg></button></header>
+      <header><h2>Preferences</h2><button value="close" formnovalidate aria-label="Close preferences"><svg><use href="#i-close"/></svg></button></header>
       <label class="setting"><span><b>24-hour time</b><small>Use 24h instead of 12h</small></span><input id="setting-clock" type="checkbox" role="switch"></label>
       <label class="setting"><span><b>Temperature</b><small>Use Celsius instead of Fahrenheit</small></span><input id="setting-temp" type="checkbox" role="switch"></label>
       <label class="setting select-setting"><span><b>Search engine</b><small>Used for regular searches</small></span><select id="setting-engine"><option value="brave">Brave</option><option value="google">Google</option><option value="duckduckgo">DuckDuckGo</option></select></label>
-      <label class="setting select-setting"><span><b>Atmosphere</b><small>Background animation intensity</small></span><select id="setting-intensity"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
       <fieldset><legend>Visible widgets</legend><label><input id="setting-weather" type="checkbox"> Weather</label><label><input id="setting-scratchpad" type="checkbox"> Scratchpad</label></fieldset>
+      <section class="shortcut-settings">
+        <h3>Shortcuts</h3>
+        <div id="shortcut-settings-list"></div>
+        <input id="shortcut-title" placeholder="Name" required>
+        <select id="shortcut-type"><option value="web">Web</option><option value="windows">Windows app</option></select>
+        <input id="shortcut-target" placeholder="https://… or C:\\Path\\App.exe" required>
+        <label><input id="shortcut-home" type="checkbox" checked> Show on Home</label>
+        <p id="shortcut-error" role="alert"></p>
+        <div class="form-actions"><button id="shortcut-save" type="button">Save</button><button id="shortcut-cancel" type="button">Cancel</button></div>
+      </section>
     </form>
   </dialog>
 </body>
