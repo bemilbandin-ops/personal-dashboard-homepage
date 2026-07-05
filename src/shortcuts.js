@@ -81,12 +81,17 @@ Aura.shortcuts = {
     const add = document.createElement("button");
     add.type = "button";
     add.className = "space-card add-card";
+    add.setAttribute("aria-label", "Add shortcut");
     const mark = document.createElement("span");
     mark.textContent = "+";
     const label = document.createElement("b");
-    label.textContent = "Add New";
+    label.textContent = "Add Shortcut";
     add.append(mark, label);
-    add.addEventListener("click", () => document.getElementById("settings-dialog").showModal());
+    add.addEventListener("click", () => {
+      const dialog = document.getElementById("settings-dialog");
+      if (!dialog.open) dialog.showModal();
+      requestAnimationFrame(() => document.getElementById("shortcut-title")?.focus());
+    });
     root.append(add);
   },
   renderLibrary() {

@@ -5,16 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>Ether Focus</title>
-  <link rel="stylesheet" href="src/styles.css?v=compact-glass">
-  <script defer src="src/config.js?v=fristad"></script>
-  <script defer src="src/storage.js"></script>
+  <link rel="stylesheet" href="src/styles.css?v=tools">
+  <script defer src="src/config.js?v=live-weather"></script>
+  <script defer src="src/storage.js?v=sync-20260705-4"></script>
+  <script defer src="src/sync.js?v=sync-20260705-4"></script>
+  <script defer src="src/weather.js?v=location"></script>
   <script defer src="src/launcher-config.js"></script>
   <script defer src="src/shortcuts.js"></script>
   <script defer src="src/search.js"></script>
-  <script defer src="src/widgets.js"></script>
+  <script defer src="src/widgets.js?v=tools"></script>
   <script defer src="src/productivity.js"></script>
   <script defer src="src/atmosphere.js"></script>
-  <script defer src="src/app.js?v=flower-of-life-2"></script>
+  <script defer src="src/time-tools.js"></script>
+  <script defer src="src/notes.js"></script>
+  <script defer src="src/app.js?v=auth-20260705-4"></script>
 </head>
 <body>
   <canvas id="atmosphere" aria-hidden="true"></canvas>
@@ -41,8 +45,7 @@
 
   <aside class="sidebar">
     <header class="brand">
-      <h1>Focus Mode</h1>
-      <p><span class="pulse"></span> Active Session: 45m</p>
+      <p><span class="pulse"></span><span id="active-session">Active session: 0m</span></p>
     </header>
     <nav aria-label="Dashboard sections">
       <button type="button" class="active" data-view-target="home" aria-current="page"><svg><use href="#i-home"/></svg>Home</button>
@@ -50,17 +53,12 @@
       <button type="button" data-view-target="atmosphere"><svg><use href="#i-cloud"/></svg>Atmosphere</button>
       <button type="button" data-view-target="library"><svg><use href="#i-folder"/></svg>Library</button>
     </nav>
-    <button class="deep-work" id="deep-work">Deep Work</button>
-    <div class="sidebar-footer">
-      <button data-open-settings><svg><use href="#i-help"/></svg>Preferences</button>
-      <button id="reset-data"><svg><use href="#i-reset"/></svg>Reset Data</button>
-    </div>
   </aside>
 
   <main id="home">
     <section class="app-view" data-view="home">
       <section class="hero">
-        <button class="clock-button" id="clock-toggle" aria-label="Toggle 12 or 24 hour time">
+        <button class="clock-button" id="clock-toggle" aria-label="Open timer alarm and stopwatch">
           <span id="clock">00:00</span>
           <small id="date"></small>
         </button>
@@ -74,19 +72,24 @@
         <section class="spaces-section" aria-labelledby="spaces-title">
           <header class="section-header">
             <h2 id="spaces-title">Spaces</h2>
-            <button data-open-settings>Edit</button>
           </header>
           <div class="spaces" id="spaces"></div>
         </section>
 
         <section class="widgets" aria-label="Widgets">
-          <button class="card weather" id="weather" aria-label="Toggle temperature unit">
-            <svg class="weather-mark"><use href="#i-sun"/></svg>
-            <div><h2 id="weather-location"></h2><p id="weather-condition"></p></div>
-            <strong><span id="temperature"></span><small id="temperature-unit"></small></strong>
+          <button type="button" class="card weather" id="weather" aria-label="Show weather forecast" aria-expanded="false">
+            <svg class="weather-mark" id="weather-icon"><use href="#i-sun"/></svg>
+            <div class="weather-head">
+              <h2 id="weather-location"></h2>
+              <p id="weather-condition"></p>
+              <p class="weather-detail" id="weather-detail"></p>
+              <small class="weather-updated" id="weather-updated"></small>
+            </div>
+            <strong aria-live="polite"><span id="temperature"></span><small id="temperature-unit"></small></strong>
+            <ul class="weather-forecast" id="weather-forecast" hidden></ul>
           </button>
           <article class="card scratchpad" id="scratchpad-widget">
-            <header><h2><svg><use href="#i-note"/></svg>Scratchpad</h2><span id="save-status">Saved</span></header>
+            <header><h2><svg><use href="#i-note"/></svg>Scratchpad</h2><span class="scratchpad-actions"><button id="save-note-library" type="button">Save Note</button><span id="save-status">Saved</span></span></header>
             <textarea id="scratchpad" placeholder="Jot down quick thoughts... Auto-saves." aria-label="Scratchpad"></textarea>
           </article>
         </section>
@@ -104,6 +107,7 @@
     <section class="app-view" data-view="library" hidden>
       <header class="view-header"><h2>Library</h2><p>Everything you saved.</p></header>
       <input id="library-search" type="search" placeholder="Filter shortcuts…">
+      <div id="library-notes"></div>
       <div id="library-web"></div>
       <div id="library-windows"></div>
     </section>
@@ -117,17 +121,54 @@
       <label class="setting"><span><b>24-hour time</b><small>Use 24h instead of 12h</small></span><input id="setting-clock" type="checkbox" role="switch"></label>
       <label class="setting"><span><b>Temperature</b><small>Use Celsius instead of Fahrenheit</small></span><input id="setting-temp" type="checkbox" role="switch"></label>
       <label class="setting select-setting"><span><b>Search engine</b><small>Used for regular searches</small></span><select id="setting-engine"><option value="brave">Brave</option><option value="google">Google</option><option value="duckduckgo">DuckDuckGo</option></select></label>
+      <section class="weather-settings">
+        <h3>Weather Location</h3>
+        <small>Use a city name or coordinates like 57.82, 13.01.</small>
+        <div class="inline-form"><input id="weather-location-input" placeholder="Fristad"><button id="weather-location-save" type="button">Save</button></div>
+        <p id="weather-location-status" role="status"></p>
+      </section>
       <fieldset><legend>Visible widgets</legend><label><input id="setting-weather" type="checkbox"> Weather</label><label><input id="setting-scratchpad" type="checkbox"> Scratchpad</label></fieldset>
       <section class="shortcut-settings">
         <h3>Shortcuts</h3>
         <div id="shortcut-settings-list"></div>
         <input id="shortcut-title" placeholder="Name" required>
         <select id="shortcut-type"><option value="web">Web</option><option value="windows">Windows app</option></select>
-        <input id="shortcut-target" placeholder="https://… or C:\\Path\\App.exe" required>
+        <input id="shortcut-target" placeholder="https://… or C:\Path\App.exe" required>
         <label><input id="shortcut-home" type="checkbox" checked> Show on Home</label>
         <p id="shortcut-error" role="alert"></p>
         <div class="form-actions"><button id="shortcut-save" type="button">Save</button><button id="shortcut-cancel" type="button">Cancel</button></div>
       </section>
+      <section class="danger-settings">
+        <h3>Danger zone</h3>
+        <button id="reset-data" class="danger-button" type="button">Reset Data</button>
+      </section>
+    </form>
+  </dialog>
+
+  <dialog id="time-tools-dialog">
+    <form method="dialog" class="time-tools-panel">
+      <header><h2>Time Tools</h2><button value="close" formnovalidate aria-label="Close time tools"><svg><use href="#i-close"/></svg></button></header>
+      <div class="time-tools-grid">
+        <section class="time-tool-card">
+          <h3>Alarm</h3>
+          <div class="inline-form"><input id="alarm-time" type="time"><select id="alarm-sound"><option value="chime">Chime</option><option value="bell">Bell</option><option value="soft">Soft</option></select><button id="alarm-add" type="button">Add</button></div>
+          <p id="alarm-status" role="status"></p>
+          <ul id="alarm-list" class="time-list"></ul>
+        </section>
+        <section class="time-tool-card">
+          <h3>Timer</h3>
+          <strong id="timer-display">00:00</strong>
+          <div class="inline-form compact"><input id="timer-minutes" type="number" min="0" value="25" aria-label="Timer minutes"><input id="timer-seconds" type="number" min="0" max="59" value="0" aria-label="Timer seconds"><select id="timer-sound"><option value="chime">Chime</option><option value="bell">Bell</option><option value="soft">Soft</option></select></div>
+          <div class="form-actions"><button id="timer-start" type="button">Start</button><button id="timer-pause" type="button">Pause</button><button id="timer-reset" type="button">Reset</button></div>
+        </section>
+        <section class="time-tool-card">
+          <h3>Stopwatch</h3>
+          <strong id="stopwatch-display">00:00.0</strong>
+          <select id="stopwatch-sound"><option value="soft">Soft lap sound</option><option value="chime">Chime lap sound</option><option value="bell">Bell lap sound</option></select>
+          <div class="form-actions"><button id="stopwatch-start" type="button">Start</button><button id="stopwatch-pause" type="button">Pause</button><button id="stopwatch-lap" type="button">Lap</button><button id="stopwatch-reset" type="button">Reset</button></div>
+          <ol id="stopwatch-laps" class="time-list"></ol>
+        </section>
+      </div>
     </form>
   </dialog>
 </body>
