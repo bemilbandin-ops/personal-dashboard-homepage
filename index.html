@@ -7,7 +7,8 @@
   <title>Ether Focus</title>
   <link rel="stylesheet" href="src/styles.css?v=tools">
   <script defer src="src/config.js?v=live-weather"></script>
-  <script defer src="src/storage.js"></script>
+  <script defer src="src/storage.js?v=sync-20260705-4"></script>
+  <script defer src="src/sync.js?v=sync-20260705-4"></script>
   <script defer src="src/weather.js?v=location"></script>
   <script defer src="src/launcher-config.js"></script>
   <script defer src="src/shortcuts.js"></script>
@@ -17,7 +18,7 @@
   <script defer src="src/atmosphere.js"></script>
   <script defer src="src/time-tools.js"></script>
   <script defer src="src/notes.js"></script>
-  <script defer src="src/app.js?v=tools"></script>
+  <script defer src="src/app.js?v=auth-20260705-4"></script>
 </head>
 <body>
   <canvas id="atmosphere" aria-hidden="true"></canvas>
@@ -132,7 +133,7 @@
         <div id="shortcut-settings-list"></div>
         <input id="shortcut-title" placeholder="Name" required>
         <select id="shortcut-type"><option value="web">Web</option><option value="windows">Windows app</option></select>
-        <input id="shortcut-target" placeholder="https://… or C:\\Path\\App.exe" required>
+        <input id="shortcut-target" placeholder="https://… or C:\Path\App.exe" required>
         <label><input id="shortcut-home" type="checkbox" checked> Show on Home</label>
         <p id="shortcut-error" role="alert"></p>
         <div class="form-actions"><button id="shortcut-save" type="button">Save</button><button id="shortcut-cancel" type="button">Cancel</button></div>
