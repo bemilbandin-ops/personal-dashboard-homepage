@@ -240,9 +240,11 @@ window.Aura = window.Aura || {};
     const status = controls.weatherLocationStatus;
     try {
       if (status) status.textContent = "Updating location…";
-      const location = await Aura.weather.setLocation(controls.weatherLocation.value);
-      controls.weatherLocation.value = location.location;
-      if (status) status.textContent = `Weather set to ${location.location}.`;
+      const result = await Aura.weather.setLocation(controls.weatherLocation.value);
+      controls.weatherLocation.value = result.location.location;
+      if (status) status.textContent = result.refreshed
+        ? `Weather set to ${result.location.location}.`
+        : "Location saved, but live weather is unavailable.";
     } catch (error) {
       if (status) status.textContent = error.message || "Could not update weather location.";
     }

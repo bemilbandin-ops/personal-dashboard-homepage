@@ -19,16 +19,24 @@ Aura.storage = {
       return fallback;
     }
   },
+
   set(key, value) {
-    this.setLocalOnly(key, value);
-    if (this.syncKeys.has(key)) Aura.sync?.queueSave?.(key, value);
+    const saved = this.setLocalOnly(key, value);
+    if (saved && this.syncKeys.has(key)) Aura.sync?.queueSave?.(key, value);
+    return saved;
   },
   setLocalOnly(key, value) {
-    localStorage.setItem(this._fullKey(key), JSON.stringify(value));
+    try {
+      localStorage.setItem(this._fullKey(key), JSON.stringify(value));
+      return true;
+    } catch {
+      return false;
+    }
   },
   removeLocalOnly(key) {
     localStorage.removeItem(this._fullKey(key));
   },
+
   clear() {
     Object.keys(localStorage)
       .filter(key => key.startsWith(this.prefix))

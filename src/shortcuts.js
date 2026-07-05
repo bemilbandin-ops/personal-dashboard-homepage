@@ -25,7 +25,7 @@ Aura.shortcuts = {
     return this.normalize(Aura.storage.get("shortcuts", Aura.config.spaces));
   },
   save(items) {
-    Aura.storage.set("shortcuts", this.normalize(items));
+    return Aura.storage.set("shortcuts", this.normalize(items));
   },
   validate(item) {
     if (!item.title?.trim() || !item.target?.trim()) return false;
@@ -38,11 +38,12 @@ Aura.shortcuts = {
       ? "Enter a name and an absolute .exe or .lnk path."
       : "Enter a name and a full URL or registered app link.";
     const record = this.normalize([{ ...input, id: this.editingId || crypto.randomUUID() }])[0];
-    this.items = this.editingId
+    const nextItems = this.editingId
       ? this.items.map(item => item.id === this.editingId ? record : item)
       : [...this.items, record];
+    if (!this.save(nextItems)) return "Could not save shortcut.";
+    this.items = nextItems;
     this.editingId = null;
-    this.save(this.items);
     this.renderAll();
     return "";
   },

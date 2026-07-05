@@ -6,6 +6,7 @@ Aura.weather = {
   refreshMs: 25 * 60 * 1000,
   current: null,
   timer: null,
+  requestId: 0,
   listeners: new Set(),
 
   init(onChange) {
@@ -45,8 +46,8 @@ Aura.weather = {
     Aura.storage?.set(this.cacheKey, null);
     this.current = this.getFallback("Loading weather…", "loading");
     this.notify();
-    await this.refresh(true);
-    return location;
+    const weather = await this.refresh(true);
+    return { location, refreshed: weather.status === "ready" };
   },
 
   async resolveLocation(query) {
@@ -55,11 +56,12 @@ Aura.weather = {
 
     const coordinates = value.match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
     if (coordinates) {
-      return {
-        location: `${coordinates[1]}, ${coordinates[2]}`,
-        latitude: Number(coordinates[1]),
-        longitude: Number(coordinates[2])
-      };
+      const latitude = Number(coordinates[1]);
+      const longitude = Number(coordinates[2]);
+      if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
+        throw new Error("Enter valid latitude and longitude coordinates.");
+      }
+      return { location: `${coordinates[1]}, ${coordinates[2]}`, latitude, longitude };
     }
 
     const params = new URLSearchParams({ name: value, count: "1", language: "en", format: "json" });
@@ -77,6 +79,7 @@ Aura.weather = {
   },
 
   async refresh(force = false) {
+    const requestId = ++this.requestId;
     const cached = this.getCached();
     const lastUpdated = cached?.updatedAt ? new Date(cached.updatedAt).getTime() : 0;
     const cacheAge = Date.now() - lastUpdated;
@@ -93,11 +96,13 @@ Aura.weather = {
       if (!response.ok) throw new Error(`Weather request failed: ${response.status}`);
 
       const data = await response.json();
+      if (requestId !== this.requestId) return this.getCurrent();
       const weather = this.normalize(data);
       this.save(weather);
       this.setCurrent(weather);
       return weather;
     } catch (error) {
+      if (requestId !== this.requestId) return this.getCurrent();
       const fallback = cached
         ? { ...cached, status: "cached", error: error.message }
         : this.getFallback("Weather unavailable", "error", error.message);

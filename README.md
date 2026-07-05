@@ -15,7 +15,7 @@ Use Aura as:
 - **Custom Home:** Choose which shortcuts appear on Home, with a maximum of six.
 - **Productivity:** Persistent focus timer and task list with add, complete, and delete actions.
 - **Atmosphere:** WebGL animated background with enabled state, intensity, speed, and color presets.
-- **Widgets:** Clock, static Fristad weather, temperature-unit toggle, and auto-saving scratchpad.
+- **Widgets:** Clock, configurable live weather with cached fallback, temperature-unit toggle, and auto-saving scratchpad.
 - **Preferences:** Persist clock, temperature, search engine, widget visibility, shortcuts, tasks, and atmosphere settings.
 - **Responsive layout:** Desktop and mobile layouts without horizontal overflow.
 - **Chrome new tab:** The included Manifest V3 file replaces Chrome's new-tab page.
@@ -61,14 +61,14 @@ After installation, reload the page or reload the unpacked Chrome extension befo
 
 ### Security
 
-Never commit either of these generated values:
+The tracked `src/launcher-config.js` always contains an empty token. The installer generates both local credential files, which are ignored by Git:
 
 - `launcher-helper/secret.txt`
-- A generated token inside `src/launcher-config.js`
+- `src/launcher-config.local.js`
 
-The secret file is ignored by Git. The committed `src/launcher-config.js` intentionally contains an empty token; running the installer modifies that file only on your machine.
+Any token previously committed to the repository is compromised and must be rotated. Run the installer again to generate a new token before using Windows shortcuts.
 
-To remove the protocol registration and clear the local token:
+To remove the protocol registration, local config, and secret:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\launcher-helper\uninstall.ps1
@@ -119,7 +119,7 @@ GitHub Pages and Vercel support Aura's browser features and web shortcuts. They 
 Run every JavaScript test from PowerShell:
 
 ```powershell
-node --test tests\navigation.test.mjs tests\shortcuts.test.mjs tests\productivity.test.mjs tests\atmosphere.test.mjs
+node --test tests
 ```
 
 Run the launcher security tests without opening an application:

@@ -7,9 +7,17 @@ Aura.productivity = {
   tasks: [],
   history: [],
   intervalId: null,
-  dayMs: 24 * 60 * 60 * 1000,
   remaining(timer, now = Date.now()) {
     return timer.running ? Math.max(0, timer.endsAt - now) : Math.max(0, timer.remainingMs);
+  },
+  completionTime(timer, now = Date.now()) {
+    const endsAt = Number(timer?.endsAt);
+    return Number.isFinite(endsAt) && endsAt > 0 ? Math.min(endsAt, now) : now;
+  },
+  addDays(value, amount) {
+    const date = new Date(value);
+    date.setDate(date.getDate() + amount);
+    return date.getTime();
   },
   addTask(tasks, title) {
     const clean = title.trim();
@@ -99,7 +107,7 @@ Aura.productivity = {
     this.renderTimer();
   },
   completeSession({ playSound = true } = {}) {
-    const endedAt = Date.now();
+    const endedAt = this.completionTime(this.timer);
     const durationMs = this.timer.targetMs || this.durationMs;
     const startedAt = this.timer.startedAt || endedAt - durationMs;
     const session = { id: this.makeId(), startedAt, endedAt, durationMs, completed: true };
@@ -156,25 +164,25 @@ Aura.productivity = {
   },
   todayMinutes() {
     const start = this.startOfDay(Date.now());
-    return this.minutesForRange(start, start + this.dayMs);
+    return this.minutesForRange(start, this.addDays(start, 1));
   },
   weekMinutes() {
     const start = this.startOfWeek();
-    return this.minutesForRange(start, start + 7 * this.dayMs);
+    return this.minutesForRange(start, this.addDays(start, 7));
   },
   completedToday() {
     const start = this.startOfDay(Date.now());
-    return this.sessionsBetween(start, start + this.dayMs).length;
+    return this.sessionsBetween(start, this.addDays(start, 1)).length;
   },
   currentStreak() {
     const completedDays = new Set(this.history.map(session => this.startOfDay(session.endedAt)));
     let cursor = this.startOfDay(Date.now());
-    if (!completedDays.has(cursor)) cursor -= this.dayMs;
+    if (!completedDays.has(cursor)) cursor = this.addDays(cursor, -1);
 
     let streak = 0;
     while (completedDays.has(cursor)) {
       streak += 1;
-      cursor -= this.dayMs;
+      cursor = this.addDays(cursor, -1);
     }
     return streak;
   },
@@ -206,8 +214,8 @@ Aura.productivity = {
 
     const weekStart = this.startOfWeek();
     const days = Array.from({ length: 7 }, (_, index) => {
-      const start = weekStart + index * this.dayMs;
-      return { start, minutes: this.minutesForRange(start, start + this.dayMs) };
+      const start = this.addDays(weekStart, index);
+      return { start, minutes: this.minutesForRange(start, this.addDays(start, 1)) };
     });
     const maxMinutes = Math.max(25, ...days.map(day => day.minutes));
 

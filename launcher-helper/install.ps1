@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$configPath = Join-Path $repoRoot "src\launcher-config.js"
+$configPath = Join-Path $repoRoot "src\launcher-config.local.js"
 $launcherPath = Join-Path $PSScriptRoot "launcher.py"
 $secretPath = Join-Path $PSScriptRoot "secret.txt"
 $pythonw = (Get-Command pythonw.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1).Source

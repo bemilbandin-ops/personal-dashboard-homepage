@@ -118,8 +118,7 @@ Aura.widgets = {
     this.status.classList.add("saving");
     clearTimeout(this.saveTimer);
     this.saveTimer = setTimeout(() => {
-      Aura.storage.set("scratchpad", this.notes.value);
-      this.status.textContent = "Saved";
+      this.status.textContent = Aura.storage.set("scratchpad", this.notes.value) ? "Saved" : "Not saved";
       this.status.classList.remove("saving");
     }, 500);
   },
