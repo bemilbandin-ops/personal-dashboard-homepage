@@ -66,6 +66,7 @@ window.Aura = window.Aura || {};
       <section class="account-panel" aria-labelledby="account-sync-title">
         <h3 id="account-sync-title">Account sync</h3>
         <small>Sync preferences, scratchpad, tasks and focus history across devices.</small>
+        <small id="sync-build">Sync build: test-db diagnostic</small>
         <input id="login-email" name="email" type="email" autocomplete="email" placeholder="Email">
         <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Password">
         <div class="account-actions">
@@ -111,10 +112,22 @@ window.Aura = window.Aura || {};
     if (controls.syncStatus) controls.syncStatus.textContent = message;
   }
 
+  function describeSyncError(error) {
+    if (!error) return "Unknown error";
+    if (typeof error === "string") return error;
+
+    const parts = [error.message, error.code, error.details, error.hint]
+      .filter(Boolean)
+      .map(part => String(part).trim())
+      .filter(Boolean);
+
+    return parts.length ? parts.join(" | ") : JSON.stringify(error);
+  }
+
   function syncStateMessage() {
     const state = Aura.sync?.getState?.();
-    if (!state?.configured) return "Sync not configured. Add your Supabase URL and anon key in src/sync.js.";
-    if (state.lastError) return `${state.status}: ${state.lastError.message || state.lastError}`;
+    if (!state?.configured) return "Sync not configured. This deployed branch does not contain the Supabase key.";
+    if (state.lastError) return `${state.status}: ${describeSyncError(state.lastError)}`;
     return state.status || "Not signed in";
   }
 
@@ -150,7 +163,7 @@ window.Aura = window.Aura || {};
       setSyncStatus("Sync ready. Reloading…");
       location.reload();
     } catch (error) {
-      setSyncStatus(error.message || "Auth failed.");
+      setSyncStatus(describeSyncError(error) || "Auth failed.");
       refreshAccountUi();
     }
   }
@@ -169,7 +182,7 @@ window.Aura = window.Aura || {};
       await Aura.sync.signOut();
       refreshAccountUi();
     } catch (error) {
-      setSyncStatus(error.message || "Logout failed.");
+      setSyncStatus(describeSyncError(error) || "Logout failed.");
     }
   });
   Aura.sync?.onChange?.(() => refreshAccountUi());
