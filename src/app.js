@@ -66,7 +66,6 @@ window.Aura = window.Aura || {};
       <section class="account-panel" aria-labelledby="account-sync-title">
         <h3 id="account-sync-title">Account sync</h3>
         <small>Sync preferences, scratchpad, tasks and focus history across devices.</small>
-        <small id="sync-build">Sync build: test-db diagnostic</small>
         <input id="login-email" name="email" type="email" autocomplete="email" placeholder="Email">
         <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Password">
         <div class="account-actions">
@@ -126,7 +125,7 @@ window.Aura = window.Aura || {};
 
   function syncStateMessage() {
     const state = Aura.sync?.getState?.();
-    if (!state?.configured) return "Sync not configured. This deployed branch does not contain the Supabase key.";
+    if (!state?.configured) return "Sync not configured. This deployment does not contain the Supabase key.";
     if (state.lastError) return `${state.status}: ${describeSyncError(state.lastError)}`;
     return state.status || "Not signed in";
   }
@@ -141,6 +140,19 @@ window.Aura = window.Aura || {};
       if (control) control.disabled = !configured || signedIn;
     });
     if (controls.logoutButton) controls.logoutButton.hidden = !signedIn;
+  }
+
+  async function persistCurrentSyncValues() {
+    if (!Aura.sync?.getUser?.()) return;
+
+    Aura.storage.setLocalOnly("preferences", preferences);
+    Aura.storage.setLocalOnly("scratchpad", document.getElementById("scratchpad")?.value || Aura.storage.get("scratchpad", ""));
+    Aura.storage.setLocalOnly("tasks", Array.isArray(Aura.productivity?.tasks) ? Aura.productivity.tasks : Aura.storage.get("tasks", []));
+    Aura.storage.setLocalOnly("focus-history", Array.isArray(Aura.productivity?.history) ? Aura.productivity.history : Aura.storage.get("focus-history", []));
+
+    setSyncStatus("Saving sync data…");
+    await Aura.sync.pushLocal();
+    refreshAccountUi();
   }
 
   function getCredentials() {
@@ -160,8 +172,8 @@ window.Aura = window.Aura || {};
     try {
       setSyncStatus(action === "signUp" ? "Creating account…" : "Logging in…");
       await Aura.sync[action](email, password);
-      setSyncStatus("Sync ready. Reloading…");
-      location.reload();
+      await persistCurrentSyncValues();
+      refreshAccountUi();
     } catch (error) {
       setSyncStatus(describeSyncError(error) || "Auth failed.");
       refreshAccountUi();
@@ -238,4 +250,5 @@ window.Aura = window.Aura || {};
   Aura.search.init(preferences);
   Aura.widgets.init(preferences, savePreferences);
   Aura.atmosphere.init(preferences);
+  persistCurrentSyncValues().catch(error => setSyncStatus(`Cloud save failed: ${describeSyncError(error)}`));
 })();
