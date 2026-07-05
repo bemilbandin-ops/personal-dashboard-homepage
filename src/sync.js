@@ -2,7 +2,7 @@ window.Aura = window.Aura || {};
 
 Aura.syncConfig = Aura.syncConfig || {
   url: "https://bwcuqgchaskkrblpmkmd.supabase.co",
-  anonKey: ""
+  anonKey: "sb_publishable_e1FKf4_ZZmIViuEQrqQXCw_lMc54T-P"
 };
 
 Aura.sync = {
