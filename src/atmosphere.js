@@ -13,6 +13,8 @@ Aura.atmosphere = {
   uniforms: null,
   rafId: null,
   reduceMotion: false,
+  lastFrameTime: 0,
+  targetFrameMs: 1000 / 30,
   normalize(value = {}) {
     const speed = Number(value.speed);
     return {
@@ -27,8 +29,9 @@ Aura.atmosphere = {
     Aura.storage.set("atmosphere", this.state);
     document.body.dataset.intensity = this.state.intensity;
     document.body.dataset.atmosphereEnabled = this.state.enabled;
+    if (this.canvas) this.canvas.hidden = !this.state.enabled;
     this.renderControls();
-    if (this.state.enabled) this.start();
+    if (this.state.enabled && !document.hidden) this.start();
     else this.stop();
   },
   renderControls() {
@@ -41,17 +44,26 @@ Aura.atmosphere = {
     });
   },
   start() {
-    if (!this.gl || !this.state.enabled) return;
+    if (!this.gl || !this.state?.enabled || document.hidden || this.canvas?.hidden) return;
     if (this.reduceMotion) this.draw(0);
     else if (this.rafId === null) this.rafId = requestAnimationFrame(time => this.draw(time));
   },
   stop() {
     if (this.rafId !== null) cancelAnimationFrame(this.rafId);
     this.rafId = null;
+    this.lastFrameTime = 0;
   },
   draw(frameTime) {
     this.rafId = null;
     const { gl, canvas, uniforms, state } = this;
+    if (!gl || !canvas || !uniforms || !state?.enabled || document.hidden || canvas.hidden) return;
+
+    if (!this.reduceMotion && this.lastFrameTime && frameTime - this.lastFrameTime < this.targetFrameMs) {
+      this.rafId = requestAnimationFrame(time => this.draw(time));
+      return;
+    }
+    this.lastFrameTime = frameTime;
+
     const colors = this.presets[state.preset];
     gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
     gl.uniform1f(uniforms.time, frameTime / 1000);
@@ -60,18 +72,20 @@ Aura.atmosphere = {
     gl.uniform3fv(uniforms.colorA, colors[0]);
     gl.uniform3fv(uniforms.colorB, colors[1]);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    if (state.enabled && !this.reduceMotion) this.rafId = requestAnimationFrame(time => this.draw(time));
+    if (state.enabled && !this.reduceMotion && !document.hidden && !canvas.hidden) {
+      this.rafId = requestAnimationFrame(time => this.draw(time));
+    }
   },
   initWebGL() {
     const canvas = document.getElementById("atmosphere");
-    const gl = canvas.getContext("webgl");
+    const gl = canvas.getContext("webgl", { antialias: false, depth: false, stencil: false, preserveDrawingBuffer: false });
     if (!gl) return;
     this.canvas = canvas;
     this.gl = gl;
     const resize = () => {
-      const scale = Math.min(devicePixelRatio, 2);
-      canvas.width = innerWidth * scale;
-      canvas.height = innerHeight * scale;
+      const scale = Math.min(devicePixelRatio || 1, 1.25);
+      canvas.width = Math.round(innerWidth * scale);
+      canvas.height = Math.round(innerHeight * scale);
       gl.viewport(0, 0, canvas.width, canvas.height);
     };
     resize();
@@ -164,6 +178,10 @@ Aura.atmosphere = {
     document.getElementById("atmosphere-speed").addEventListener("input", event => this.apply({ speed: event.target.value }));
     document.querySelectorAll("[data-atmosphere-preset]").forEach(button => {
       button.addEventListener("click", () => this.apply({ preset: button.dataset.atmospherePreset }));
+    });
+    addEventListener("visibilitychange", () => {
+      if (document.hidden) this.stop();
+      else if (this.state?.enabled) this.start();
     });
     this.initWebGL();
     const stored = Aura.storage.get("atmosphere", null);
