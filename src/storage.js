@@ -49,7 +49,7 @@ Aura.storage = {
       }
 
       const script = document.createElement("script");
-      script.src = "src/sync.js?v=sync";
+      script.src = "src/sync.js?v=sync-20260705-2";
       script.defer = true;
       script.dataset.auraSync = "true";
       script.addEventListener("load", () => resolve(), { once: true });
