@@ -105,6 +105,17 @@ window.Aura = window.Aura || {};
     ensureSyncReady().catch(error => setSyncStatus(`Cloud sync unavailable: ${describeSyncError(error)}`));
   }
 
+  document.querySelectorAll("dialog").forEach(modal => {
+    modal.addEventListener("pointerdown", event => {
+      if (event.target !== modal) return;
+      const panel = modal.querySelector("[data-dialog-panel]") || modal.firstElementChild;
+      const rect = panel?.getBoundingClientRect();
+      if (!rect) return;
+      const outsidePanel = event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom;
+      if (outsidePanel) modal.close();
+    });
+  });
+
   document.querySelectorAll("[data-open-settings]").forEach(button => button.addEventListener("click", openSettings));
   Aura.shortcuts.init();
   Aura.productivity.init();

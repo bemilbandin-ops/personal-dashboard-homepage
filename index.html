@@ -16,9 +16,9 @@
   <script defer src="src/widgets.js?v=tools"></script>
   <script defer src="src/productivity.js"></script>
   <script defer src="src/atmosphere.js?v=render-20260705-1"></script>
-  <script defer src="src/time-tools.js?v=idle-20260705-1"></script>
+  <script defer src="src/time-tools.js?v=time-tools-20260706-1"></script>
   <script defer src="src/notes.js"></script>
-  <script defer src="src/app.js?v=lazy-sync-20260705-1"></script>
+  <script defer src="src/app.js?v=dialogs-20260706-1"></script>
 </head>
 <body>
   <canvas id="atmosphere" aria-hidden="true"></canvas>
@@ -41,6 +41,13 @@
     <symbol id="i-note" viewBox="0 0 24 24"><path d="M5 5h10M5 9h10M5 13h6m5-1 3 3-5 5-3 1 1-3Z"/></symbol>
     <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 13.5v-3l-2-.7-.5-1.2.9-2-2.1-2.1-2 .9L12 5l-.7-2h-3l-.7 2-1.2.5-2-.9-2.1 2.1.9 2-.5 1.2-2 .7v3l2 .7.5 1.2-.9 2 2.1 2.1 2-.9 1.2.5.7 2h3l.7-2 1.2-.5 2 .9 2.1-2.1-.9-2 .5-1.2Z"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><path d="m5 5 14 14M19 5 5 19"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-alarm" viewBox="0 0 24 24"><circle cx="12" cy="13" r="7"/><path d="M12 10v4l3 2M5 4 2 7m17-3 3 3M8 21l-1 1m9-1 1 1"/></symbol>
+    <symbol id="i-timer" viewBox="0 0 24 24"><path d="M10 2h4M12 14l4-4"/><circle cx="12" cy="14" r="8"/></symbol>
+    <symbol id="i-stopwatch" viewBox="0 0 24 24"><path d="M10 2h4m-2 8v5l3 2"/><circle cx="12" cy="14" r="8"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 6v12M16 6v12"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4m0 0h12l-2 4 2 4H5"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></symbol>
   </svg>
 
   <aside class="sidebar">
@@ -59,6 +66,7 @@
     <section class="app-view" data-view="home">
       <section class="hero">
         <button class="clock-button" id="clock-toggle" aria-label="Open timer alarm and stopwatch">
+          <svg class="clock-glyph" aria-hidden="true"><use href="#i-clock"/></svg>
           <span id="clock">00:00</span>
           <small id="date"></small>
         </button>
@@ -116,7 +124,7 @@
   <button class="settings-fab" data-open-settings aria-label="Open preferences"><svg><use href="#i-settings"/></svg></button>
 
   <dialog id="settings-dialog">
-    <form method="dialog" class="settings-panel">
+    <form method="dialog" class="settings-panel" data-dialog-panel>
       <header><h2>Preferences</h2><button value="close" formnovalidate aria-label="Close preferences"><svg><use href="#i-close"/></svg></button></header>
       <label class="setting"><span><b>24-hour time</b><small>Use 24h instead of 12h</small></span><input id="setting-clock" type="checkbox" role="switch"></label>
       <label class="setting"><span><b>Temperature</b><small>Use Celsius instead of Fahrenheit</small></span><input id="setting-temp" type="checkbox" role="switch"></label>
@@ -146,26 +154,26 @@
   </dialog>
 
   <dialog id="time-tools-dialog">
-    <form method="dialog" class="time-tools-panel">
-      <header><h2>Time Tools</h2><button value="close" formnovalidate aria-label="Close time tools"><svg><use href="#i-close"/></svg></button></header>
+    <form method="dialog" class="time-tools-panel" id="time-tools-form" data-dialog-panel novalidate>
+      <header><h2><svg aria-hidden="true"><use href="#i-clock"/></svg>Time Tools</h2><button value="close" formnovalidate aria-label="Close time tools"><svg><use href="#i-close"/></svg></button></header>
       <div class="time-tools-grid">
         <section class="time-tool-card">
-          <h3>Alarm</h3>
-          <div class="inline-form"><input id="alarm-time" type="time"><select id="alarm-sound"><option value="chime">Chime</option><option value="bell">Bell</option><option value="soft">Soft</option></select><button id="alarm-add" type="button">Add</button></div>
+          <h3><svg aria-hidden="true"><use href="#i-alarm"/></svg>Alarm</h3>
+          <div class="inline-form"><input id="alarm-time" type="time"><select id="alarm-sound"><option value="chime">Chime</option><option value="bell">Bell</option><option value="soft">Soft</option></select><button id="alarm-add" type="button"><svg aria-hidden="true"><use href="#i-plus"/></svg>Add</button></div>
           <p id="alarm-status" role="status"></p>
           <ul id="alarm-list" class="time-list"></ul>
         </section>
         <section class="time-tool-card">
-          <h3>Timer</h3>
+          <h3><svg aria-hidden="true"><use href="#i-timer"/></svg>Timer</h3>
           <strong id="timer-display">00:00</strong>
-          <div class="inline-form compact"><input id="timer-minutes" type="number" min="0" value="25" aria-label="Timer minutes"><input id="timer-seconds" type="number" min="0" max="59" value="0" aria-label="Timer seconds"><select id="timer-sound"><option value="chime">Chime</option><option value="bell">Bell</option><option value="soft">Soft</option></select></div>
-          <div class="form-actions"><button id="timer-start" type="button">Start</button><button id="timer-pause" type="button">Pause</button><button id="timer-reset" type="button">Reset</button></div>
+          <div class="inline-form compact time-inputs"><label><span>Min</span><input id="timer-minutes" type="number" min="0" value="25" inputmode="numeric" aria-label="Timer minutes"></label><label><span>Sec</span><input id="timer-seconds" type="number" min="0" max="59" value="0" inputmode="numeric" aria-label="Timer seconds"></label><label><span>Sound</span><select id="timer-sound"><option value="chime">Chime</option><option value="bell">Bell</option><option value="soft">Soft</option></select></label></div>
+          <div class="form-actions"><button id="timer-start" type="button"><svg aria-hidden="true"><use href="#i-play"/></svg>Start</button><button id="timer-pause" type="button"><svg aria-hidden="true"><use href="#i-pause"/></svg>Pause</button><button id="timer-reset" type="button"><svg aria-hidden="true"><use href="#i-reset"/></svg>Reset</button></div>
         </section>
         <section class="time-tool-card">
-          <h3>Stopwatch</h3>
+          <h3><svg aria-hidden="true"><use href="#i-stopwatch"/></svg>Stopwatch</h3>
           <strong id="stopwatch-display">00:00.0</strong>
           <select id="stopwatch-sound"><option value="soft">Soft lap sound</option><option value="chime">Chime lap sound</option><option value="bell">Bell lap sound</option></select>
-          <div class="form-actions"><button id="stopwatch-start" type="button">Start</button><button id="stopwatch-pause" type="button">Pause</button><button id="stopwatch-lap" type="button">Lap</button><button id="stopwatch-reset" type="button">Reset</button></div>
+          <div class="form-actions"><button id="stopwatch-start" type="button"><svg aria-hidden="true"><use href="#i-play"/></svg>Start</button><button id="stopwatch-pause" type="button"><svg aria-hidden="true"><use href="#i-pause"/></svg>Pause</button><button id="stopwatch-lap" type="button"><svg aria-hidden="true"><use href="#i-flag"/></svg>Lap</button><button id="stopwatch-reset" type="button"><svg aria-hidden="true"><use href="#i-reset"/></svg>Reset</button></div>
           <ol id="stopwatch-laps" class="time-list"></ol>
         </section>
       </div>

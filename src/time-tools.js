@@ -29,6 +29,7 @@ Aura.timeTools = {
   },
 
   bind() {
+    document.getElementById("time-tools-form")?.addEventListener("submit", event => event.preventDefault());
     document.getElementById("alarm-add")?.addEventListener("click", () => this.addAlarm());
     document.getElementById("timer-start")?.addEventListener("click", () => this.startTimer());
     document.getElementById("timer-pause")?.addEventListener("click", () => this.pauseTimer());
@@ -54,6 +55,12 @@ Aura.timeTools = {
 
   makeId() {
     return globalThis.crypto?.randomUUID?.() || `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  },
+
+  clampNumber(value, min, max) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return min;
+    return Math.min(max, Math.max(min, Math.floor(number)));
   },
 
   addAlarm() {
@@ -99,7 +106,8 @@ Aura.timeTools = {
       const remove = document.createElement("button");
       label.innerHTML = `<b>${alarm.time}</b><small>${this.formatDue(alarm.dueAt)} · ${alarm.sound}</small>`;
       remove.type = "button";
-      remove.textContent = "Remove";
+      remove.innerHTML = `<svg aria-hidden="true"><use href="#i-trash"/></svg><span class="sr-only">Remove</span>`;
+      remove.setAttribute("aria-label", `Remove alarm ${alarm.time}`);
       remove.addEventListener("click", () => {
         this.alarms = this.alarms.filter(item => item.id !== alarm.id);
         this.saveAlarms();
@@ -112,8 +120,12 @@ Aura.timeTools = {
   },
 
   startTimer() {
-    const minutes = Math.max(0, Number(document.getElementById("timer-minutes")?.value || 0));
-    const seconds = Math.max(0, Number(document.getElementById("timer-seconds")?.value || 0));
+    const minutesInput = document.getElementById("timer-minutes");
+    const secondsInput = document.getElementById("timer-seconds");
+    const minutes = this.clampNumber(minutesInput?.value, 0, 999);
+    const seconds = this.clampNumber(secondsInput?.value, 0, 59);
+    if (minutesInput) minutesInput.value = String(minutes);
+    if (secondsInput) secondsInput.value = String(seconds);
     const sound = document.getElementById("timer-sound")?.value || "chime";
     const durationMs = this.timer.remainingMs || ((minutes * 60) + seconds) * 1000;
     if (!durationMs) return;

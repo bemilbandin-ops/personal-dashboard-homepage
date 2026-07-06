@@ -74,3 +74,11 @@ test("mobile keeps a compact non-overflowing view navigation", () => {
   assert.match(mobile, /\.sidebar nav\s*\{[^}]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/s);
   assert.match(mobile, /\.sidebar nav button\s*\{[^}]*min-width:\s*0/s);
 });
+
+
+test("dialogs close when clicking outside their panels", () => {
+  assert.match(html, /data-dialog-panel/);
+  assert.match(app, /querySelectorAll\("dialog"\)/);
+  assert.match(app, /addEventListener\("pointerdown"/);
+  assert.match(app, /modal\.close\(\)/);
+});
