@@ -17,19 +17,13 @@ Aura.draggable = {
     }
 
     this.cards.forEach(card => {
-      // Create a drag handle overlay for the weather widget, and use header for scratchpad
-      let handle = card.querySelector(".drag-handle");
-      if (!handle) {
-        if (card.classList.contains("weather")) {
-          // Add a discrete drag handle for weather
-          handle = document.createElement("div");
-          handle.className = "drag-handle";
-          card.prepend(handle);
-        } else if (card.classList.contains("scratchpad")) {
-          handle = card.querySelector("header");
-          handle.classList.add("drag-handle");
-        }
+      let handle;
+      if (card.classList.contains("weather")) {
+        handle = card;
+      } else if (card.classList.contains("scratchpad")) {
+        handle = card.querySelector("header");
       }
+      if (handle) handle.classList.add("drag-handle");
       
       // Resize handle
       let resizer = card.querySelector(".resize-handle");
@@ -97,7 +91,9 @@ Aura.draggable = {
 
     handle?.addEventListener("pointerdown", e => {
       if (!this.unlocked) return;
-      if (e.target.closest("button, input, textarea")) return; // Don't drag if clicking a button
+      const closestInteractive = e.target.closest("button, input, textarea, a");
+      if (closestInteractive && closestInteractive !== card) return; // Don't drag if clicking an interactive element inside the card
+
       
       isDragging = true;
       startX = e.clientX;
