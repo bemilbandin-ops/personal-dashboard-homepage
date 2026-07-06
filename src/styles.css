@@ -18,7 +18,7 @@ body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); 
 button, input, textarea, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { color: inherit; }
-svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+svg { width: 24px; height: 24px; fill: currentColor; stroke: none; }
 .svg-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
 #atmosphere { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: 1; transition: opacity .4s; }
 body[data-atmosphere-enabled="false"] #atmosphere { opacity: 0; }
@@ -50,13 +50,13 @@ main::-webkit-scrollbar { display: none; }
 .view-header h2 { margin: 0; font-size: 28px; }
 .view-header p { margin: 6px 0 0; color: var(--muted); }
 [data-view][hidden] { display: none !important; }
-.hero { min-height: min(42vh, 390px); display: grid; align-content: center; justify-items: center; padding: 34px 0 42px; text-align: center; }
+.hero { position: relative; min-height: min(42vh, 390px); display: grid; align-content: center; justify-items: center; padding: 34px 0 42px; text-align: center; }
 .clock-button { display: grid; justify-items: center; padding: 0; border: 0; background: none; cursor: pointer; }
 .clock-button:hover #clock, .clock-button:hover .clock-glyph { color: var(--primary); }
 .clock-glyph { width: clamp(34px, 4vw, 46px); height: clamp(34px, 4vw, 46px); margin-bottom: 12px; color: rgba(194,193,255,.76); }
 #clock { display: block; color: var(--text); font-size: clamp(64px, 6.4vw, 92px); line-height: .92; font-weight: 700; letter-spacing: -.07em; text-shadow: 0 18px 50px rgba(0,0,0,.5); }
 #date { display: block; margin-top: 12px; color: rgba(194,193,255,.78); font-size: 20px; line-height: 1.1; letter-spacing: .035em; }
-.search { position: relative; width: min(760px, 90%); margin-top: 24px; }
+.search { position: absolute; bottom: -12px; width: min(760px, 90%); margin-top: 0; }
 .search svg { position: absolute; left: 24px; top: 50%; transform: translateY(-50%); color: var(--primary); }
 .search input {
   width: 100%; height: 64px; padding: 0 28px 0 64px; border: 1px solid var(--line); border-radius: 999px; outline: 0;
@@ -113,6 +113,13 @@ main::-webkit-scrollbar { display: none; }
 .scratchpad textarea { flex: 1; width: 100%; margin-top: 14px; padding: 0; border: 0; outline: 0; resize: none; background: transparent; color: var(--text); font-size: 15px; line-height: 1.5; }
 .scratchpad textarea::placeholder { color: #696672; }
 [hidden] { display: none !important; }
+.widgets-unlocked .drag-handle { cursor: grab; }
+.widgets-unlocked .drag-handle:active { cursor: grabbing; }
+.widgets-unlocked .card { box-shadow: 0 0 0 2px var(--primary); transition: box-shadow 0.2s; }
+.weather .drag-handle { position: absolute; inset: 0; z-index: 0; }
+.resize-handle { position: absolute; right: 0; bottom: 0; width: 20px; height: 20px; cursor: nwse-resize; z-index: 10; display: none; }
+.resize-handle::after { content: ""; position: absolute; right: 4px; bottom: 4px; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); }
+.widgets-unlocked .resize-handle { display: block; }
 .settings-fab { position: fixed; right: 22px; bottom: 22px; z-index: 4; width: 54px; height: 54px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: rgba(8,8,12,.14); cursor: pointer; box-shadow: 0 18px 45px rgba(0,0,0,.2); }
 .settings-fab:hover { background: rgba(255,255,255,.11); }
 .settings-fab svg { color: var(--primary); }
@@ -231,7 +238,7 @@ fieldset input { accent-color: #8885f5; }
   .hero { min-height: 34vh; padding: 36px 0 48px; }
   #clock { font-size: clamp(58px, 20vw, 84px); }
   #date { margin-top: 12px; font-size: 16px; }
-  .search { width: 100%; margin-top: 26px; }
+  .search { position: relative; bottom: auto; width: 100%; margin-top: 26px; }
   .search input { height: 58px; padding-left: 58px; font-size: 15px; }
   .search svg { left: 24px; }
   .dashboard { display: block; }

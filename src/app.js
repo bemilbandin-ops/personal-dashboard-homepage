@@ -6,6 +6,7 @@ window.Aura = window.Aura || {};
     isCelsius: true,
     showWeather: true,
     showScratchpad: true,
+    unlockWidgets: false,
     searchEngine: Aura.config.search.defaultEngine
   };
   const preferences = { ...defaults, ...Aura.storage.get("preferences", {}) };
@@ -106,7 +107,7 @@ window.Aura = window.Aura || {};
   }
 
   document.querySelectorAll("dialog").forEach(modal => {
-    modal.addEventListener("pointerdown", event => {
+    modal.addEventListener("click", event => {
       if (event.target !== modal) return;
       const panel = modal.querySelector("[data-dialog-panel]") || modal.firstElementChild;
       const rect = panel?.getBoundingClientRect();
@@ -121,6 +122,7 @@ window.Aura = window.Aura || {};
   Aura.productivity.init();
   Aura.timeTools.init();
   Aura.notes.init();
+  Aura.draggable?.init?.(preferences.unlockWidgets);
 
   function ensureAccountSyncUi() {
     if (!document.querySelector('link[data-aura-sync-css="true"]')) {
@@ -160,6 +162,7 @@ window.Aura = window.Aura || {};
     engine: document.getElementById("setting-engine"),
     weather: document.getElementById("setting-weather"),
     scratchpad: document.getElementById("setting-scratchpad"),
+    unlockWidgets: document.getElementById("setting-unlock-widgets"),
     weatherLocation: document.getElementById("weather-location-input"),
     weatherLocationSave: document.getElementById("weather-location-save"),
     weatherLocationStatus: document.getElementById("weather-location-status"),
@@ -169,7 +172,7 @@ window.Aura = window.Aura || {};
     signupButton: document.getElementById("signup-button"),
     logoutButton: document.getElementById("logout-button")
   };
-  const preferenceControls = [controls.clock, controls.temp, controls.engine, controls.weather, controls.scratchpad];
+  const preferenceControls = [controls.clock, controls.temp, controls.engine, controls.weather, controls.scratchpad, controls.unlockWidgets];
 
   function syncSettings() {
     controls.clock.checked = preferences.is24Hour;
@@ -177,6 +180,7 @@ window.Aura = window.Aura || {};
     controls.engine.value = preferences.searchEngine;
     controls.weather.checked = preferences.showWeather;
     controls.scratchpad.checked = preferences.showScratchpad;
+    if (controls.unlockWidgets) controls.unlockWidgets.checked = preferences.unlockWidgets;
     if (controls.weatherLocation) controls.weatherLocation.value = Aura.weather?.getLocation?.().location || Aura.config.weather.location;
   }
 
@@ -261,10 +265,12 @@ window.Aura = window.Aura || {};
     preferences.searchEngine = controls.engine.value;
     preferences.showWeather = controls.weather.checked;
     preferences.showScratchpad = controls.scratchpad.checked;
+    preferences.unlockWidgets = controls.unlockWidgets?.checked || false;
     savePreferences();
     Aura.widgets.updateClock();
     Aura.widgets.renderWeather();
     Aura.widgets.applyVisibility();
+    if (Aura.draggable) Aura.draggable.toggle(preferences.unlockWidgets);
   }));
 
   controls.weatherLocationSave?.addEventListener("click", async () => {
