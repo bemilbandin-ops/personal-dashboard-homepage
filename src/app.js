@@ -107,12 +107,27 @@ window.Aura = window.Aura || {};
     ensureSyncReady().catch(error => setSyncStatus(`Cloud sync unavailable: ${describeSyncError(error)}`));
   }
 
+  let isTimePickerActive = false;
+  document.addEventListener("focusin", event => {
+    if (event.target.tagName === "INPUT" && event.target.type === "time") {
+      isTimePickerActive = true;
+    }
+  });
+  document.addEventListener("focusout", event => {
+    if (event.target.tagName === "INPUT" && event.target.type === "time") {
+      setTimeout(() => {
+        isTimePickerActive = false;
+      }, 300);
+    }
+  });
+
   document.querySelectorAll("dialog").forEach(modal => {
     let isBackdropClick = false;
-    modal.addEventListener("mousedown", event => {
+    modal.addEventListener("pointerdown", event => {
       isBackdropClick = (event.target === modal);
     });
     modal.addEventListener("click", event => {
+      if (isTimePickerActive) return;
       if (document.activeElement && document.activeElement.type === "time") return;
       if (isBackdropClick && event.target === modal) {
         const panel = modal.querySelector("[data-dialog-panel]") || modal.firstElementChild;
