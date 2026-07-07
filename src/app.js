@@ -108,14 +108,21 @@ window.Aura = window.Aura || {};
   }
 
   document.querySelectorAll("dialog").forEach(modal => {
+    let isBackdropClick = false;
+    modal.addEventListener("mousedown", event => {
+      isBackdropClick = (event.target === modal);
+    });
     modal.addEventListener("click", event => {
       if (document.activeElement && document.activeElement.type === "time") return;
-      if (event.target !== modal) return;
-      const panel = modal.querySelector("[data-dialog-panel]") || modal.firstElementChild;
-      const rect = panel?.getBoundingClientRect();
-      if (!rect) return;
-      const outsidePanel = event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom;
-      if (outsidePanel) modal.close();
+      if (isBackdropClick && event.target === modal) {
+        const panel = modal.querySelector("[data-dialog-panel]") || modal.firstElementChild;
+        const rect = panel?.getBoundingClientRect();
+        if (rect) {
+          const outsidePanel = event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom;
+          if (outsidePanel) modal.close();
+        }
+      }
+      isBackdropClick = false;
     });
   });
 
@@ -280,12 +287,37 @@ window.Aura = window.Aura || {};
   }));
 
   function applyIconset() {
-    const sprite = document.getElementById("svg-sprite");
-    if (sprite && window.Aura && Aura.iconsets) {
-      sprite.innerHTML = Aura.iconsets[preferences.iconset || "default"];
-    }
-    document.body.classList.toggle("iconset-radix", preferences.iconset === "radix");
+    const iconset = preferences.iconset || "default";
+    document.querySelectorAll("svg use").forEach(use => {
+      const currentHref = use.getAttribute("href");
+      if (currentHref && (currentHref.startsWith("#default-i-") || currentHref.startsWith("#radix-i-") || currentHref.startsWith("#i-"))) {
+        const baseName = currentHref.replace(/^#(default-|radix-)/, "#");
+        const cleanName = baseName.slice(1);
+        use.setAttribute("href", `#${iconset}-${cleanName}`);
+      }
+    });
+    document.body.classList.toggle("iconset-radix", iconset === "radix");
   }
+
+  const iconsetObserver = new MutationObserver(mutations => {
+    const iconset = preferences.iconset || "default";
+    mutations.forEach(mutation => {
+      mutation.addedNodes.forEach(node => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          const uses = node.tagName === "use" ? [node] : node.querySelectorAll("use");
+          uses.forEach(use => {
+            const currentHref = use.getAttribute("href");
+            if (currentHref && (currentHref.startsWith("#default-i-") || currentHref.startsWith("#radix-i-") || currentHref.startsWith("#i-"))) {
+              const baseName = currentHref.replace(/^#(default-|radix-)/, "#");
+              const cleanName = baseName.slice(1);
+              use.setAttribute("href", `#${iconset}-${cleanName}`);
+            }
+          });
+        }
+      });
+    });
+  });
+  iconsetObserver.observe(document.body, { childList: true, subtree: true });
 
   controls.weatherLocationSave?.addEventListener("click", async () => {
     const status = controls.weatherLocationStatus;
