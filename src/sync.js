@@ -124,7 +124,7 @@ Aura.sync = {
       }
 
       const script = document.createElement("script");
-      script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+      script.src = "src/supabase.js";
       script.defer = true;
       script.dataset.supabaseJs = "true";
       script.addEventListener("load", () => resolve(), { once: true });
