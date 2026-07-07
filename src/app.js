@@ -7,7 +7,8 @@ window.Aura = window.Aura || {};
     showWeather: true,
     showScratchpad: true,
     unlockWidgets: false,
-    searchEngine: Aura.config.search.defaultEngine
+    searchEngine: Aura.config.search.defaultEngine,
+    iconset: "default"
   };
   const preferences = { ...defaults, ...Aura.storage.get("preferences", {}) };
   const savePreferences = () => {
@@ -108,6 +109,7 @@ window.Aura = window.Aura || {};
 
   document.querySelectorAll("dialog").forEach(modal => {
     modal.addEventListener("click", event => {
+      if (document.activeElement && document.activeElement.type === "time") return;
       if (event.target !== modal) return;
       const panel = modal.querySelector("[data-dialog-panel]") || modal.firstElementChild;
       const rect = panel?.getBoundingClientRect();
@@ -163,6 +165,7 @@ window.Aura = window.Aura || {};
     weather: document.getElementById("setting-weather"),
     scratchpad: document.getElementById("setting-scratchpad"),
     unlockWidgets: document.getElementById("setting-unlock-widgets"),
+    iconset: document.getElementById("setting-iconset"),
     weatherLocation: document.getElementById("weather-location-input"),
     weatherLocationSave: document.getElementById("weather-location-save"),
     weatherLocationStatus: document.getElementById("weather-location-status"),
@@ -172,7 +175,7 @@ window.Aura = window.Aura || {};
     signupButton: document.getElementById("signup-button"),
     logoutButton: document.getElementById("logout-button")
   };
-  const preferenceControls = [controls.clock, controls.temp, controls.engine, controls.weather, controls.scratchpad, controls.unlockWidgets];
+  const preferenceControls = [controls.clock, controls.temp, controls.engine, controls.weather, controls.scratchpad, controls.unlockWidgets, controls.iconset].filter(Boolean);
 
   function syncSettings() {
     controls.clock.checked = preferences.is24Hour;
@@ -181,6 +184,7 @@ window.Aura = window.Aura || {};
     controls.weather.checked = preferences.showWeather;
     controls.scratchpad.checked = preferences.showScratchpad;
     if (controls.unlockWidgets) controls.unlockWidgets.checked = preferences.unlockWidgets;
+    if (controls.iconset) controls.iconset.value = preferences.iconset;
     if (controls.weatherLocation) controls.weatherLocation.value = Aura.weather?.getLocation?.().location || Aura.config.weather.location;
   }
 
@@ -266,12 +270,22 @@ window.Aura = window.Aura || {};
     preferences.showWeather = controls.weather.checked;
     preferences.showScratchpad = controls.scratchpad.checked;
     preferences.unlockWidgets = controls.unlockWidgets?.checked || false;
+    if (controls.iconset) preferences.iconset = controls.iconset.value;
     savePreferences();
     Aura.widgets.updateClock();
     Aura.widgets.renderWeather();
     Aura.widgets.applyVisibility();
     if (Aura.draggable) Aura.draggable.toggle(preferences.unlockWidgets);
+    applyIconset();
   }));
+
+  function applyIconset() {
+    const sprite = document.getElementById("svg-sprite");
+    if (sprite && window.Aura && Aura.iconsets) {
+      sprite.innerHTML = Aura.iconsets[preferences.iconset || "default"];
+    }
+    document.body.classList.toggle("iconset-radix", preferences.iconset === "radix");
+  }
 
   controls.weatherLocationSave?.addEventListener("click", async () => {
     const status = controls.weatherLocationStatus;
@@ -311,6 +325,7 @@ window.Aura = window.Aura || {};
   });
 
   syncSettings();
+  applyIconset();
   refreshAccountUi();
   Aura.search.init(preferences);
   Aura.widgets.init(preferences, savePreferences);
