@@ -177,6 +177,28 @@
         <input id="shortcut-title" placeholder="Name" required>
         <select id="shortcut-type"><option value="web">Web</option><option value="windows">Windows app</option></select>
         <input id="shortcut-target" placeholder="https://… or C:\Path\App.exe" required>
+        <select id="shortcut-icon" aria-label="Icon">
+          <option value="cloud">Cloud Icon</option>
+          <option value="code">Code Icon</option>
+          <option value="play">Play Icon</option>
+          <option value="headphones">Headphones Icon</option>
+          <option value="mail">Mail Icon</option>
+          <option value="design">Design Icon</option>
+          <option value="home">Home Icon</option>
+          <option value="spark">Spark Icon</option>
+          <option value="folder">Folder Icon</option>
+          <option value="help">Help Icon</option>
+          <option value="flag">Flag Icon</option>
+          <option value="note">Note Icon</option>
+          <option value="clock">Clock Icon</option>
+        </select>
+        <select id="shortcut-color" aria-label="Color">
+          <option value="neutral">Neutral (Gray)</option>
+          <option value="red">Red</option>
+          <option value="green">Green</option>
+          <option value="blue">Blue</option>
+          <option value="purple">Purple</option>
+        </select>
         <label><input id="shortcut-home" type="checkbox" checked> Show on Home</label>
         <p id="shortcut-error" role="alert"></p>
         <div class="form-actions"><button id="shortcut-save" type="button">Save</button><button id="shortcut-cancel" type="button">Cancel</button></div>

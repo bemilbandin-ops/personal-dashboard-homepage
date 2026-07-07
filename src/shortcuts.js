@@ -18,7 +18,9 @@ Aura.shortcuts = {
       title: typeof item?.title === "string" ? item.title.trim() : "",
       type: item?.type === "windows" ? "windows" : "web",
       target: typeof item?.target === "string" ? item.target.trim() : "",
-      showOnHome: item?.showOnHome !== false
+      showOnHome: item?.showOnHome !== false,
+      icon: typeof item?.icon === "string" && item.icon.trim() ? item.icon.trim() : (item?.type === "windows" ? "folder" : "cloud"),
+      color: typeof item?.color === "string" && item.color.trim() ? item.color.trim() : "neutral"
     })).filter(item => item.title && item.target);
   },
   load() {
@@ -65,10 +67,11 @@ Aura.shortcuts = {
     this.homeItems().forEach(item => {
       const href = this.targetFor(item);
       const card = document.createElement(href ? "a" : "div");
-      card.className = "space-card";
+      card.className = "space-card" + (item.color && item.color !== "neutral" ? " " + item.color : "");
       if (href) card.href = href;
       const mark = document.createElement("span");
-      mark.textContent = item.type === "windows" ? "▣" : "↗";
+      const iconName = item.icon || (item.type === "windows" ? "folder" : "cloud");
+      mark.innerHTML = `<svg aria-hidden="true"><use href="#i-${iconName}"/></svg>`;
       const title = document.createElement("b");
       title.textContent = item.title;
       card.append(mark, title);
@@ -163,6 +166,8 @@ Aura.shortcuts = {
     document.getElementById("shortcut-type").value = item.type;
     document.getElementById("shortcut-target").value = item.target;
     document.getElementById("shortcut-home").checked = item.showOnHome;
+    document.getElementById("shortcut-icon").value = item.icon || (item.type === "windows" ? "folder" : "cloud");
+    document.getElementById("shortcut-color").value = item.color || "neutral";
     document.getElementById("shortcut-error").textContent = "";
   },
   clearEditor() {
@@ -171,6 +176,8 @@ Aura.shortcuts = {
     document.getElementById("shortcut-type").value = "web";
     document.getElementById("shortcut-target").value = "";
     document.getElementById("shortcut-home").checked = true;
+    document.getElementById("shortcut-icon").value = "cloud";
+    document.getElementById("shortcut-color").value = "neutral";
     document.getElementById("shortcut-error").textContent = "";
   },
   init() {
@@ -180,12 +187,22 @@ Aura.shortcuts = {
         title: document.getElementById("shortcut-title").value,
         type: document.getElementById("shortcut-type").value,
         target: document.getElementById("shortcut-target").value,
-        showOnHome: document.getElementById("shortcut-home").checked
+        showOnHome: document.getElementById("shortcut-home").checked,
+        icon: document.getElementById("shortcut-icon").value,
+        color: document.getElementById("shortcut-color").value
       });
       document.getElementById("shortcut-error").textContent = error;
       if (!error) this.clearEditor();
     });
     document.getElementById("shortcut-cancel").addEventListener("click", () => this.clearEditor());
+    document.getElementById("shortcut-type").addEventListener("change", (e) => {
+      const iconSelect = document.getElementById("shortcut-icon");
+      if (e.target.value === "windows") {
+        if (iconSelect.value === "cloud") iconSelect.value = "folder";
+      } else {
+        if (iconSelect.value === "folder") iconSelect.value = "cloud";
+      }
+    });
     document.getElementById("library-search").addEventListener("input", () => this.renderLibrary());
     this.renderAll();
   }
