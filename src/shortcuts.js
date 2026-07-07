@@ -160,6 +160,23 @@ Aura.shortcuts = {
     this.renderLibrary();
     this.renderSettings();
   },
+  updatePreview() {
+    const icon = document.getElementById("shortcut-icon")?.value || "cloud";
+    const color = document.getElementById("shortcut-color")?.value || "neutral";
+    const preview = document.getElementById("shortcut-preview");
+    if (!preview) return;
+
+    preview.className = "shortcut-preview";
+    if (color !== "neutral") {
+      preview.classList.add(color);
+    }
+
+    const use = preview.querySelector("use");
+    if (use) {
+      const iconset = Aura.storage.get("preferences", {}).iconset || "default";
+      use.setAttribute("href", `#${iconset}-i-${icon}`);
+    }
+  },
   edit(item) {
     this.editingId = item.id;
     document.getElementById("shortcut-title").value = item.title;
@@ -169,6 +186,7 @@ Aura.shortcuts = {
     document.getElementById("shortcut-icon").value = item.icon || (item.type === "windows" ? "folder" : "cloud");
     document.getElementById("shortcut-color").value = item.color || "neutral";
     document.getElementById("shortcut-error").textContent = "";
+    this.updatePreview();
   },
   clearEditor() {
     this.editingId = null;
@@ -179,6 +197,7 @@ Aura.shortcuts = {
     document.getElementById("shortcut-icon").value = "cloud";
     document.getElementById("shortcut-color").value = "neutral";
     document.getElementById("shortcut-error").textContent = "";
+    this.updatePreview();
   },
   init() {
     this.items = this.load();
@@ -195,6 +214,8 @@ Aura.shortcuts = {
       if (!error) this.clearEditor();
     });
     document.getElementById("shortcut-cancel").addEventListener("click", () => this.clearEditor());
+    document.getElementById("shortcut-icon").addEventListener("change", () => this.updatePreview());
+    document.getElementById("shortcut-color").addEventListener("change", () => this.updatePreview());
     document.getElementById("shortcut-type").addEventListener("change", (e) => {
       const iconSelect = document.getElementById("shortcut-icon");
       if (e.target.value === "windows") {
@@ -202,8 +223,10 @@ Aura.shortcuts = {
       } else {
         if (iconSelect.value === "folder") iconSelect.value = "cloud";
       }
+      this.updatePreview();
     });
     document.getElementById("library-search").addEventListener("input", () => this.renderLibrary());
     this.renderAll();
+    this.updatePreview();
   }
 };

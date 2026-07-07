@@ -245,6 +245,30 @@ fieldset input { accent-color: #8885f5; }
 .atmosphere-presets button { min-height: 48px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-hover); cursor: pointer; }
 .atmosphere-presets button[aria-pressed="true"] { border-color: var(--primary); background: rgba(194,193,255,.12); }
 
+.shortcut-preview {
+  display: flex;
+  justify-content: center;
+  margin-block: 8px;
+}
+.shortcut-preview > span {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,.02);
+  border: 1px solid var(--line);
+  transition: all .2s ease;
+}
+.shortcut-preview > span svg {
+  width: 24px;
+  height: 24px;
+}
+.shortcut-preview.red > span { color: #ff6b6b; background: rgba(255,0,0,.1); border-color: rgba(255,107,107,.25); }
+.shortcut-preview.green > span { color: #58e58a; background: rgba(29,185,84,.1); border-color: rgba(88,229,138,.25); }
+.shortcut-preview.blue > span { color: #bdd4ff; background: rgba(0,109,214,.12); border-color: rgba(189,212,255,.25); }
+.shortcut-preview.purple > span { color: #efc6ff; background: rgba(125,1,177,.13); border-color: rgba(239,198,255,.25); }
+
 @media (max-width: 900px) {
   .sidebar { width: 230px; }
   main { margin-left: 230px; padding-inline: 24px; }
