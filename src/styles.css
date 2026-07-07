@@ -172,7 +172,7 @@ fieldset input { accent-color: #8885f5; }
 .weather-settings, .danger-settings, .shortcut-settings { display: grid; gap: 10px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
 .weather-settings h3, .danger-settings h3, .shortcut-settings h3 { margin: 0 0 4px; }
 .inline-form { display: flex; gap: 8px; align-items: center; }
-.inline-form input { flex: 1; min-width: 0; }
+.inline-form input, .inline-form select { flex: 1; min-width: 0; }
 .inline-form.compact input { max-width: 86px; }
 .inline-form button, .danger-button, .time-tool-card button, .time-tool-card select, .time-tool-card input { min-height: 40px; }
 .shortcut-settings > input, .shortcut-settings > select, #library-search, .weather-settings input, .time-tool-card input, .time-tool-card select { width: 100%; min-width: 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: rgba(41,40,46,.55); color: var(--text); }
