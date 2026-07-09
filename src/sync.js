@@ -19,7 +19,9 @@ Aura.sync = {
   listeners: new Set(),
   cloudKeys: new Set(),
   cloudTimestamps: new Map(),
+  lastPushedTimestamps: new Map(),
   realtimeChannel: null,
+  notifyTimer: null,
   status: "Sync not configured",
   lastError: null,
 
@@ -50,6 +52,14 @@ Aura.sync = {
     this.listeners.forEach(listener => listener(this.getState()));
   },
 
+  scheduleNotify() {
+    if (this.notifyTimer) return;
+    this.notifyTimer = setTimeout(() => {
+      this.notifyTimer = null;
+      this.notify();
+    }, 100);
+  },
+
   setupRealtime() {
     if (!this.client || !this.user) return;
     if (this.realtimeChannel) {
@@ -61,11 +71,17 @@ Aura.sync = {
         { event: '*', schema: 'public', table: 'user_settings',
           filter: `user_id=eq.${this.user.id}` },
         (payload) => {
-          if (payload.new && payload.new.key) {
-            Aura.storage.setLocalOnly(payload.new.key, payload.new.value);
-            this.cloudTimestamps.set(payload.new.key, new Date(payload.new.updated_at).getTime());
-            this.notify();
-          }
+          if (!payload.new || !payload.new.key) return;
+          const key = payload.new.key;
+          const incomingTs = new Date(payload.new.updated_at).getTime();
+
+          // Ignore echoes of our own writes
+          const lastPushed = this.lastPushedTimestamps.get(key);
+          if (lastPushed && Math.abs(incomingTs - lastPushed) < 2000) return;
+
+          Aura.storage.setLocalOnly(key, payload.new.value);
+          this.cloudTimestamps.set(key, incomingTs);
+          this.scheduleNotify();
         })
       .subscribe();
   },
@@ -278,17 +294,19 @@ Aura.sync = {
       return; // Skip upload (cloud is newer or same)
     }
 
+    const now = new Date();
     const { error } = await this.client
       .from(this.table)
       .upsert({
         user_id: this.user.id,
         key,
         value: value === undefined ? null : value,
-        updated_at: new Date().toISOString()
+        updated_at: now.toISOString()
       }, { onConflict: "user_id,key" });
 
     if (error) throw error;
     this.cloudKeys.add(key);
+    this.lastPushedTimestamps.set(key, now.getTime());
     this.setStatus(`Synced as ${this.user.email}`);
   },
 

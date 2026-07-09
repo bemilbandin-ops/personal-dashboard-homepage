@@ -135,8 +135,8 @@ Aura.atmosphere = {
         float zoom=fract(t*.4);
         vec3 color=vec3(0.);
 
-        for(int i=0;i<3;i++) {
-          float layer=float(i)/3.;
+        for(int i=0;i<2;i++) {
+          float layer=float(i)/2.;
           float depth=fract(zoom+layer);
           float scale=pow(10.,1.-depth*2.);
           float alpha=smoothstep(0.,.2,depth)*(1.-smoothstep(.8,1.,depth));
