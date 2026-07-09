@@ -108,6 +108,27 @@ Aura.sync = {
     return this.readyPromise;
   },
 
+  createStorageAdapter() {
+    // Use chrome.storage.local for extensions (survives restarts),
+    // fall back to localStorage for the live website
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      const PREFIX = "sb-auth-";
+      return {
+        async getItem(key) {
+          const result = await chrome.storage.local.get(PREFIX + key);
+          return result[PREFIX + key] ?? null;
+        },
+        async setItem(key, value) {
+          await chrome.storage.local.set({ [PREFIX + key]: value });
+        },
+        async removeItem(key) {
+          await chrome.storage.local.remove(PREFIX + key);
+        }
+      };
+    }
+    return localStorage;
+  },
+
   async _init() {
     if (!this.isConfigured()) {
       this.setStatus("Sync not configured");
@@ -120,7 +141,13 @@ Aura.sync = {
     try {
       await this.loadSupabaseSdk();
       const { url, anonKey } = Aura.syncConfig;
-      this.client = window.supabase.createClient(url, anonKey);
+      this.client = window.supabase.createClient(url, anonKey, {
+        auth: {
+          storage: this.createStorageAdapter(),
+          autoRefreshToken: true,
+          persistSession: true
+        }
+      });
 
       const { data, error } = await this.client.auth.getSession();
       if (error) throw error;
