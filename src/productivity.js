@@ -314,6 +314,15 @@ Aura.productivity = {
       this.saveTasks();
       this.renderTasks();
     });
+    Aura.sync?.onChange?.(() => {
+      this.timer = { ...this.defaultTimer(), ...Aura.storage.get("focus-timer", {}) };
+      this.tasks = Aura.storage.get("tasks", []);
+      if (!Array.isArray(this.tasks)) this.tasks = [];
+      this.history = this.loadHistory();
+      this.renderTimer();
+      this.renderStats();
+      this.renderTasks();
+    });
     if (this.timer.running && this.remaining(this.timer) > 0) this.startInterval();
     else if (this.timer.running) this.completeSession({ playSound: false });
     this.renderTimer();

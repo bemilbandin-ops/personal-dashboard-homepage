@@ -22,7 +22,10 @@ Aura.storage = {
 
   set(key, value) {
     const saved = this.setLocalOnly(key, value);
-    if (saved && this.syncKeys.has(key)) Aura.sync?.queueSave?.(key, value);
+    if (saved) {
+      localStorage.setItem(this._fullKey('_meta:' + key), Date.now().toString());
+      if (this.syncKeys.has(key)) Aura.sync?.queueSave?.(key, value);
+    }
     return saved;
   },
   setLocalOnly(key, value) {

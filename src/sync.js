@@ -18,6 +18,8 @@ Aura.sync = {
   saveTimers: new Map(),
   listeners: new Set(),
   cloudKeys: new Set(),
+  cloudTimestamps: new Map(),
+  realtimeChannel: null,
   status: "Sync not configured",
   lastError: null,
 
@@ -46,6 +48,26 @@ Aura.sync = {
 
   notify() {
     this.listeners.forEach(listener => listener(this.getState()));
+  },
+
+  setupRealtime() {
+    if (!this.client || !this.user) return;
+    if (this.realtimeChannel) {
+      this.client.removeChannel(this.realtimeChannel);
+    }
+    this.realtimeChannel = this.client
+      .channel('user-settings-sync')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'user_settings',
+          filter: `user_id=eq.${this.user.id}` },
+        (payload) => {
+          if (payload.new && payload.new.key) {
+            Aura.storage.setLocalOnly(payload.new.key, payload.new.value);
+            this.cloudTimestamps.set(payload.new.key, new Date(payload.new.updated_at).getTime());
+            this.notify();
+          }
+        })
+      .subscribe();
   },
 
   getState() {
@@ -99,6 +121,7 @@ Aura.sync = {
 
       if (this.user) {
         this.setStatus(`Signed in as ${this.user.email}`);
+        this.setupRealtime();
         await this.pull({ skipInit: true });
       } else {
         this.setStatus("Not signed in");
@@ -147,6 +170,7 @@ Aura.sync = {
 
     if (this.user) {
       this.setStatus(`Signed in as ${this.user.email}`);
+      this.setupRealtime();
       await this.pull({ skipInit: true });
       await this.pushLocal({ skipInit: true });
     } else {
@@ -166,6 +190,7 @@ Aura.sync = {
     this.session = data.session;
     this.user = data.user;
     this.setStatus(`Signed in as ${this.user.email}`);
+    this.setupRealtime();
     await this.pull({ skipInit: true });
     await this.pushLocal({ skipInit: true });
     return data;
@@ -181,6 +206,11 @@ Aura.sync = {
     this.session = null;
     this.user = null;
     this.cloudKeys.clear();
+    this.cloudTimestamps.clear();
+    if (this.realtimeChannel) {
+      this.client.removeChannel(this.realtimeChannel);
+      this.realtimeChannel = null;
+    }
     this.setStatus("Not signed in");
   },
 
@@ -203,6 +233,7 @@ Aura.sync = {
     (data || []).forEach(row => {
       if (!this.keys.includes(row.key)) return;
       Aura.storage.setLocalOnly(row.key, row.value);
+      this.cloudTimestamps.set(row.key, new Date(row.updated_at).getTime());
       seen.add(row.key);
     });
     this.cloudKeys = seen;
@@ -238,6 +269,14 @@ Aura.sync = {
     if (!this.keys.includes(key)) return;
     if (!skipInit) await this.init();
     if (!this.client || !this.user) return;
+
+    const localModifiedStr = localStorage.getItem(Aura.storage._fullKey('_meta:' + key));
+    const localModifiedAt = localModifiedStr ? parseInt(localModifiedStr, 10) : 0;
+    const cloudUpdatedAt = this.cloudTimestamps.get(key);
+
+    if (cloudUpdatedAt && localModifiedAt <= cloudUpdatedAt) {
+      return; // Skip upload (cloud is newer or same)
+    }
 
     const { error } = await this.client
       .from(this.table)

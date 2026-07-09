@@ -9,6 +9,10 @@ Aura.notes = {
     this.status = document.getElementById("save-status");
     this.items = this.load();
     document.getElementById("save-note-library")?.addEventListener("click", () => this.saveCurrent());
+    Aura.sync?.onChange?.(() => {
+      this.items = this.load();
+      this.render();
+    });
     this.render();
   },
 

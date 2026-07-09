@@ -35,3 +35,5 @@ using ((select auth.uid()) = user_id);
 
 create index if not exists user_settings_user_id_idx
 on public.user_settings using btree (user_id);
+
+alter publication supabase_realtime add table public.user_settings;
