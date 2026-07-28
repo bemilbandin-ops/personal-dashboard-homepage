@@ -7,7 +7,7 @@ Aura.syncConfig = Aura.syncConfig || {
 
 Aura.sync = {
   table: "user_settings",
-  keys: ["preferences", "scratchpad", "tasks", "focus-history"],
+  keys: [...(Aura.storage?.syncKeys || [])],
   client: null,
   user: null,
   session: null,
@@ -19,9 +19,12 @@ Aura.sync = {
   listeners: new Set(),
   cloudKeys: new Set(),
   cloudTimestamps: new Map(),
-  lastPushedTimestamps: new Map(),
+  pendingRemote: new Map(),
   realtimeChannel: null,
   notifyTimer: null,
+  reloadTimer: null,
+  reconnectBound: false,
+  needsInitialReconcile: false,
   status: "Sync not configured",
   lastError: null,
 
@@ -60,32 +63,6 @@ Aura.sync = {
     }, 100);
   },
 
-  setupRealtime() {
-    if (!this.client || !this.user) return;
-    if (this.realtimeChannel) {
-      this.client.removeChannel(this.realtimeChannel);
-    }
-    this.realtimeChannel = this.client
-      .channel('user-settings-sync')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'user_settings',
-          filter: `user_id=eq.${this.user.id}` },
-        (payload) => {
-          if (!payload.new || !payload.new.key) return;
-          const key = payload.new.key;
-          const incomingTs = new Date(payload.new.updated_at).getTime();
-
-          // Ignore echoes of our own writes
-          const lastPushed = this.lastPushedTimestamps.get(key);
-          if (lastPushed && Math.abs(incomingTs - lastPushed) < 2000) return;
-
-          Aura.storage.setLocalOnly(key, payload.new.value);
-          this.cloudTimestamps.set(key, incomingTs);
-          this.scheduleNotify();
-        })
-      .subscribe();
-  },
-
   getState() {
     return {
       configured: this.isConfigured(),
@@ -102,6 +79,104 @@ Aura.sync = {
     this.notify();
   },
 
+  valuesEqual(left, right) {
+    try {
+      return JSON.stringify(left) === JSON.stringify(right);
+    } catch {
+      return left === right;
+    }
+  },
+
+  timestamp(value) {
+    const timestamp = new Date(value || 0).getTime();
+    return Number.isFinite(timestamp) ? timestamp : 0;
+  },
+
+  schedulePageRefresh() {
+    if (this.reloadTimer) return;
+    this.reloadTimer = setTimeout(() => {
+      this.reloadTimer = null;
+      if (typeof location !== "undefined" && typeof location.reload === "function") location.reload();
+    }, 250);
+  },
+
+  rememberPending(key, pending) {
+    const current = this.pendingRemote.get(key);
+    const currentTime = this.timestamp(current?.row?.updated_at);
+    const nextTime = this.timestamp(pending?.row?.updated_at);
+    if (!current || !currentTime || !nextTime || nextTime >= currentTime) {
+      this.pendingRemote.set(key, pending);
+    }
+  },
+
+  applyRemoteRow(row, { refresh = true } = {}) {
+    const key = row?.key;
+    if (!key || !this.keys.includes(key)) return false;
+
+    if (Aura.storage.isDirty(key)) {
+      this.rememberPending(key, { type: "upsert", row });
+      return false;
+    }
+
+    const changed = !Aura.storage.has(key) || !this.valuesEqual(Aura.storage.get(key, null), row.value);
+    const updatedAt = this.timestamp(row.updated_at) || Date.now();
+    Aura.storage.setFromSync(key, row.value, updatedAt);
+    this.cloudKeys.add(key);
+    this.cloudTimestamps.set(key, updatedAt);
+    if (changed && refresh) this.schedulePageRefresh();
+    this.scheduleNotify();
+    return changed;
+  },
+
+  applyRemoteDelete(key, { refresh = true } = {}) {
+    if (!key || !this.keys.includes(key)) return false;
+    if (Aura.storage.isDirty(key)) {
+      this.rememberPending(key, { type: "delete", key });
+      return false;
+    }
+
+    const changed = Aura.storage.has(key);
+    Aura.storage.removeFromSync(key);
+    this.cloudKeys.delete(key);
+    this.cloudTimestamps.delete(key);
+    if (changed && refresh) this.schedulePageRefresh();
+    this.scheduleNotify();
+    return changed;
+  },
+
+  setupRealtime() {
+    if (!this.client || !this.user) return;
+    if (this.realtimeChannel) this.client.removeChannel(this.realtimeChannel);
+
+    this.realtimeChannel = this.client
+      .channel(`user-settings-sync:${this.user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: this.table,
+          filter: `user_id=eq.${this.user.id}`
+        },
+        payload => {
+          if (payload.eventType === "DELETE") {
+            this.applyRemoteDelete(payload.old?.key);
+            return;
+          }
+          if (payload.new?.key) this.applyRemoteRow(payload.new);
+        }
+      )
+      .subscribe();
+  },
+
+  setupReconnect() {
+    if (this.reconnectBound || typeof addEventListener !== "function") return;
+    this.reconnectBound = true;
+    addEventListener("online", () => {
+      this.pushLocal().catch(error => this.setStatus("Cloud retry failed", error));
+    });
+  },
+
   async init() {
     if (this.readyPromise) return this.readyPromise;
     this.readyPromise = this._init();
@@ -109,20 +184,18 @@ Aura.sync = {
   },
 
   createStorageAdapter() {
-    // Use chrome.storage.local for extensions (survives restarts),
-    // fall back to localStorage for the live website
     if (typeof chrome !== "undefined" && chrome.storage?.local) {
-      const PREFIX = "sb-auth-";
+      const prefix = "sb-auth-";
       return {
         async getItem(key) {
-          const result = await chrome.storage.local.get(PREFIX + key);
-          return result[PREFIX + key] ?? null;
+          const result = await chrome.storage.local.get(prefix + key);
+          return result[prefix + key] ?? null;
         },
         async setItem(key, value) {
-          await chrome.storage.local.set({ [PREFIX + key]: value });
+          await chrome.storage.local.set({ [prefix + key]: value });
         },
         async removeItem(key) {
-          await chrome.storage.local.remove(PREFIX + key);
+          await chrome.storage.local.remove(prefix + key);
         }
       };
     }
@@ -137,7 +210,6 @@ Aura.sync = {
     }
 
     this.initializing = true;
-
     try {
       await this.loadSupabaseSdk();
       const { url, anonKey } = Aura.syncConfig;
@@ -154,14 +226,19 @@ Aura.sync = {
 
       this.session = data.session;
       this.user = data.session?.user || null;
-
       this.client.auth.onAuthStateChange((_event, session) => {
         this.session = session;
         this.user = session?.user || null;
-        this.setStatus(this.user ? `Signed in as ${this.user.email}` : "Not signed in");
-        if (this.user) this.pull().catch(error => this.setStatus("Cloud sync failed", error));
+        if (this.user) {
+          this.setupRealtime();
+          this.setStatus(`Signed in as ${this.user.email}`);
+        } else {
+          this.teardownRealtime();
+          this.setStatus("Not signed in");
+        }
       });
 
+      this.setupReconnect();
       if (this.user) {
         this.setStatus(`Signed in as ${this.user.email}`);
         this.setupRealtime();
@@ -204,45 +281,38 @@ Aura.sync = {
   async signUp(email, password) {
     await this.init();
     this.requireClient();
-
     const { data, error } = await this.client.auth.signUp({ email, password });
     if (error) throw error;
 
     this.session = data.session;
     this.user = data.session?.user || null;
-
     if (this.user) {
-      this.setStatus(`Signed in as ${this.user.email}`);
+      this.needsInitialReconcile = true;
       this.setupRealtime();
-      await this.pull({ skipInit: true });
-      await this.pushLocal({ skipInit: true });
+      this.setStatus(`Signed in as ${this.user.email}`);
     } else {
       this.setStatus("Account created. Check your email to confirm before logging in.");
     }
-
     return data;
   },
 
   async signIn(email, password) {
     await this.init();
     this.requireClient();
-
     const { data, error } = await this.client.auth.signInWithPassword({ email, password });
     if (error) throw error;
 
     this.session = data.session;
     this.user = data.user;
-    this.setStatus(`Signed in as ${this.user.email}`);
+    this.needsInitialReconcile = true;
     this.setupRealtime();
-    await this.pull({ skipInit: true });
-    await this.pushLocal({ skipInit: true });
+    this.setStatus(`Signed in as ${this.user.email}`);
     return data;
   },
 
   async signOut() {
     await this.init();
     if (!this.client) return;
-
     const { error } = await this.client.auth.signOut();
     if (error) throw error;
 
@@ -250,56 +320,85 @@ Aura.sync = {
     this.user = null;
     this.cloudKeys.clear();
     this.cloudTimestamps.clear();
-    if (this.realtimeChannel) {
-      this.client.removeChannel(this.realtimeChannel);
-      this.realtimeChannel = null;
-    }
+    this.pendingRemote.clear();
+    this.needsInitialReconcile = false;
+    this.teardownRealtime();
     this.setStatus("Not signed in");
+  },
+
+  teardownRealtime() {
+    if (this.realtimeChannel && this.client) this.client.removeChannel(this.realtimeChannel);
+    this.realtimeChannel = null;
   },
 
   requireClient() {
     if (!this.client) throw new Error("Add your Supabase Project URL and anon public key in src/sync.js first.");
   },
 
+  async fetchCloudRows() {
+    const { data, error } = await this.client
+      .from(this.table)
+      .select("key,value,updated_at")
+      .eq("user_id", this.user.id)
+      .in("key", this.keys);
+    if (error) throw error;
+    return data || [];
+  },
+
   async pull({ skipInit = false } = {}) {
     if (!skipInit) await this.init();
     if (!this.client || !this.user) return;
 
-    const { data, error } = await this.client
-      .from(this.table)
-      .select("key,value,updated_at")
-      .in("key", this.keys);
+    const rows = await this.fetchCloudRows();
+    const byKey = new Map(rows.filter(row => this.keys.includes(row.key)).map(row => [row.key, row]));
+    this.cloudKeys = new Set(byKey.keys());
+    const keysToPush = [];
 
-    if (error) throw error;
+    for (const key of this.keys) {
+      const row = byKey.get(key);
+      if (!row) {
+        if (Aura.storage.has(key)) {
+          Aura.storage.markDirty(key, Aura.storage.getModifiedAt(key) || Date.now());
+          keysToPush.push(key);
+        }
+        continue;
+      }
 
-    const seen = new Set();
-    (data || []).forEach(row => {
-      if (!this.keys.includes(row.key)) return;
-      Aura.storage.setLocalOnly(row.key, row.value);
-      this.cloudTimestamps.set(row.key, new Date(row.updated_at).getTime());
-      seen.add(row.key);
-    });
-    this.cloudKeys = seen;
+      const cloudUpdatedAt = this.timestamp(row.updated_at);
+      this.cloudTimestamps.set(key, cloudUpdatedAt);
+      if (Aura.storage.isDirty(key)) {
+        keysToPush.push(key);
+        continue;
+      }
 
-    await Promise.all(this.keys
-      .filter(key => !seen.has(key) && Aura.storage.has(key))
-      .map(key => this.saveNow(key, Aura.storage.get(key, null), { skipInit: true })));
+      const localModifiedAt = Aura.storage.getModifiedAt(key);
+      const syncedAt = Aura.storage.getSyncedAt(key);
+      if (Aura.storage.has(key) && !syncedAt && localModifiedAt > cloudUpdatedAt) {
+        Aura.storage.markDirty(key, localModifiedAt);
+        keysToPush.push(key);
+        continue;
+      }
 
-    this.setStatus(`Signed in as ${this.user.email}`);
+      this.applyRemoteRow(row);
+    }
+
+    await Promise.all(keysToPush.map(key => this.saveNow(key, Aura.storage.get(key, null), { skipInit: true })));
+    this.needsInitialReconcile = false;
+    this.setStatus(`Synced as ${this.user.email}`);
   },
 
   async pushLocal({ skipInit = false } = {}) {
     if (!skipInit) await this.init();
     if (!this.client || !this.user) return;
+    if (this.needsInitialReconcile) return this.pull({ skipInit: true });
 
     await Promise.all(this.keys
-      .filter(key => Aura.storage.has(key))
+      .filter(key => Aura.storage.has(key) && Aura.storage.isDirty(key))
       .map(key => this.saveNow(key, Aura.storage.get(key, null), { skipInit: true })));
   },
 
   queueSave(key, value) {
     if (!this.keys.includes(key)) return;
-
     clearTimeout(this.saveTimers.get(key));
     const timer = setTimeout(() => {
       this.saveTimers.delete(key);
@@ -308,47 +407,61 @@ Aura.sync = {
     this.saveTimers.set(key, timer);
   },
 
+  async fetchKey(key) {
+    const { data, error } = await this.client
+      .from(this.table)
+      .select("key,value,updated_at")
+      .eq("user_id", this.user.id)
+      .eq("key", key)
+      .maybeSingle();
+    if (error) throw error;
+    return data || null;
+  },
+
   async saveNow(key, value, { skipInit = false } = {}) {
     if (!this.keys.includes(key)) return;
     if (!skipInit) await this.init();
-    if (!this.client || !this.user) return;
+    if (!this.client || !this.user || !Aura.storage.isDirty(key)) return;
 
-    const localModifiedStr = localStorage.getItem(Aura.storage._fullKey('_meta:' + key));
-    const localModifiedAt = localModifiedStr ? parseInt(localModifiedStr, 10) : 0;
-    const cloudUpdatedAt = this.cloudTimestamps.get(key);
-
-    if (cloudUpdatedAt && localModifiedAt <= cloudUpdatedAt) {
-      return; // Skip upload (cloud is newer or same)
-    }
-
-    const now = new Date();
-    const { error } = await this.client
+    const { data, error } = await this.client
       .from(this.table)
       .upsert({
         user_id: this.user.id,
         key,
-        value: value === undefined ? null : value,
-        updated_at: now.toISOString()
-      }, { onConflict: "user_id,key" });
+        value: value === undefined ? null : value
+      }, { onConflict: "user_id,key" })
+      .select("key,value,updated_at")
+      .single();
 
     if (error) throw error;
+    const updatedAt = this.timestamp(data?.updated_at) || Date.now();
+    Aura.storage.markSynced(key, updatedAt);
     this.cloudKeys.add(key);
-    this.lastPushedTimestamps.set(key, now.getTime());
+    this.cloudTimestamps.set(key, updatedAt);
+
+    if (this.pendingRemote.has(key)) {
+      this.pendingRemote.delete(key);
+      const current = await this.fetchKey(key);
+      if (current) this.applyRemoteRow(current);
+      else this.applyRemoteDelete(key);
+    }
+
     this.setStatus(`Synced as ${this.user.email}`);
   },
 
   async clearCloud() {
     await this.init();
     if (!this.client || !this.user) return;
-
     const { error } = await this.client
       .from(this.table)
       .delete()
       .eq("user_id", this.user.id)
       .in("key", this.keys);
-
     if (error) throw error;
+
     this.cloudKeys.clear();
+    this.cloudTimestamps.clear();
+    this.pendingRemote.clear();
     this.setStatus("Cloud data cleared");
   }
 };
