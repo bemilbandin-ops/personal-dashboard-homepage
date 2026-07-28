@@ -1,9 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Aura Startpage",
-  "description": "A quiet, offline new-tab dashboard.",
-  "version": "1.0.0",
+  "description": "A quiet, offline new-tab dashboard with account sync.",
+  "version": "1.1.0",
   "permissions": ["storage"],
+  "host_permissions": [
+    "https://bwcuqgchaskkrblpmkmd.supabase.co/*"
+  ],
   "chrome_url_overrides": {
     "newtab": "index.html"
   }
