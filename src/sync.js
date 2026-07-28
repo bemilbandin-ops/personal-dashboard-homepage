@@ -113,13 +113,16 @@ Aura.sync = {
     const key = row?.key;
     if (!key || !this.keys.includes(key)) return false;
 
+    const updatedAt = this.timestamp(row.updated_at) || Date.now();
+    const knownUpdatedAt = this.cloudTimestamps.get(key) || 0;
+    if (knownUpdatedAt && updatedAt < knownUpdatedAt) return false;
+
     if (Aura.storage.isDirty(key)) {
       this.rememberPending(key, { type: "upsert", row });
       return false;
     }
 
     const changed = !Aura.storage.has(key) || !this.valuesEqual(Aura.storage.get(key, null), row.value);
-    const updatedAt = this.timestamp(row.updated_at) || Date.now();
     Aura.storage.setFromSync(key, row.value, updatedAt);
     this.cloudKeys.add(key);
     this.cloudTimestamps.set(key, updatedAt);
@@ -144,6 +147,13 @@ Aura.sync = {
     return changed;
   },
 
+  async reconcileRealtimeDelete(key) {
+    if (!key || !this.keys.includes(key)) return;
+    const current = await this.fetchKey(key);
+    if (current) this.applyRemoteRow(current);
+    else this.applyRemoteDelete(key);
+  },
+
   setupRealtime() {
     if (!this.client || !this.user) return;
     if (this.realtimeChannel) this.client.removeChannel(this.realtimeChannel);
@@ -160,7 +170,8 @@ Aura.sync = {
         },
         payload => {
           if (payload.eventType === "DELETE") {
-            this.applyRemoteDelete(payload.old?.key);
+            this.reconcileRealtimeDelete(payload.old?.key)
+              .catch(error => this.setStatus("Cloud sync failed", error));
             return;
           }
           if (payload.new?.key) this.applyRemoteRow(payload.new);
