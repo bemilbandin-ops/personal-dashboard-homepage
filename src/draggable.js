@@ -1,7 +1,7 @@
 window.Aura = window.Aura || {};
 
 Aura.draggable = {
-  storageKey: "widgets-layout",
+  storageKey: "widgets-layout-responsive",
   unlocked: false,
   layout: {},
   zIndex: 10,
@@ -9,12 +9,7 @@ Aura.draggable = {
   init(unlocked) {
     this.layout = Aura.storage.get(this.storageKey, {});
     this.cards = document.querySelectorAll(".widgets .card");
-    this.container = document.querySelector(".dashboard");
-    
-    // Ensure dashboard is relative so absolute children position correctly
-    if (this.container) {
-        this.container.style.position = "relative";
-    }
+    this.container = document.querySelector(".widgets");
 
     this.cards.forEach(card => {
       let handle;
@@ -42,17 +37,47 @@ Aura.draggable = {
       this.bindResize(card, resizer);
     });
 
+    this.containerObserver = new ResizeObserver(() => {
+      if (this.unlocked && !this.isCompact()) {
+        this.positionCards([...this.cards].filter(card => !card.hidden && card.style.position !== "absolute"));
+      }
+    });
+    if (this.container) this.containerObserver.observe(this.container);
     this.toggle(unlocked);
   },
 
   applyLayout(card, bounds) {
     card.style.position = "absolute";
-    card.style.left = bounds.left + "px";
-    card.style.top = bounds.top + "px";
-    card.style.width = bounds.width + "px";
-    card.style.height = bounds.height + "px";
+    card.style.left = `${bounds.left * 100}%`;
+    card.style.top = `${bounds.top * 100}%`;
+    card.style.width = `${bounds.width * 100}%`;
+    card.style.height = `${bounds.height * 100}%`;
     card.style.zIndex = bounds.zIndex || 10;
     card.style.margin = "0";
+  },
+
+  isCompact() {
+    return matchMedia("(max-width: 1023px)").matches;
+  },
+
+  positionCards(cards) {
+    const container = this.container.getBoundingClientRect();
+    if (this.isCompact() || !container.width || !container.height || !cards.length) return;
+    const positions = cards.map(card => {
+      const rect = card.getBoundingClientRect();
+      return [card, {
+        left: (rect.left - container.left) / container.width,
+        top: (rect.top - container.top) / container.height,
+        width: rect.width / container.width,
+        height: rect.height / container.height,
+        zIndex: 10
+      }];
+    });
+    positions.forEach(([card, bounds]) => {
+      this.layout[card.id] = bounds;
+      this.applyLayout(card, bounds);
+    });
+    this.saveLayout();
   },
 
   saveLayout() {
@@ -62,26 +87,8 @@ Aura.draggable = {
   toggle(unlocked) {
     this.unlocked = unlocked;
     document.body.classList.toggle("widgets-unlocked", unlocked);
-    this.cards.forEach(card => {
-      if (unlocked && card.style.position !== "absolute") {
-        // Initialize position based on current grid location if not already absolute
-        const rect = card.getBoundingClientRect();
-        const containerRect = this.container.getBoundingClientRect();
-        const left = rect.left - containerRect.left;
-        const top = rect.top - containerRect.top;
-        
-        card.style.position = "absolute";
-        card.style.left = left + "px";
-        card.style.top = top + "px";
-        card.style.width = rect.width + "px";
-        card.style.height = rect.height + "px";
-        card.style.margin = "0";
-        
-        this.layout[card.id] = { left, top, width: rect.width, height: rect.height, zIndex: 10 };
-      }
-    });
-    if (unlocked) {
-      this.saveLayout();
+    if (unlocked && !this.isCompact()) {
+      this.positionCards([...this.cards].filter(card => !card.hidden && card.style.position !== "absolute"));
     }
   },
 
@@ -90,7 +97,7 @@ Aura.draggable = {
     let startX, startY, initialLeft, initialTop;
 
     handle?.addEventListener("pointerdown", e => {
-      if (!this.unlocked) return;
+      if (!this.unlocked || this.isCompact()) return;
       const closestInteractive = e.target.closest("button, input, textarea, a");
       if (closestInteractive && closestInteractive !== card) return; // Don't drag if clicking an interactive element inside the card
 
@@ -98,8 +105,8 @@ Aura.draggable = {
       isDragging = true;
       startX = e.clientX;
       startY = e.clientY;
-      initialLeft = parseFloat(card.style.left) || 0;
-      initialTop = parseFloat(card.style.top) || 0;
+      initialLeft = card.offsetLeft;
+      initialTop = card.offsetTop;
       
       this.zIndex++;
       card.style.zIndex = this.zIndex;
@@ -112,8 +119,8 @@ Aura.draggable = {
       if (!isDragging) return;
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
-      const newLeft = initialLeft + dx;
-      const newTop = initialTop + dy;
+      const newLeft = Math.max(0, Math.min(this.container.clientWidth - card.offsetWidth, initialLeft + dx));
+      const newTop = Math.max(0, Math.min(this.container.clientHeight - card.offsetHeight, initialTop + dy));
       
       card.style.left = newLeft + "px";
       card.style.top = newTop + "px";
@@ -124,8 +131,8 @@ Aura.draggable = {
       isDragging = false;
       this.layout[card.id] = {
         ...this.layout[card.id],
-        left: parseFloat(card.style.left),
-        top: parseFloat(card.style.top),
+        left: card.offsetLeft / this.container.clientWidth,
+        top: card.offsetTop / this.container.clientHeight,
         zIndex: this.zIndex
       };
       this.saveLayout();
@@ -140,12 +147,12 @@ Aura.draggable = {
     let startX, startY, initialWidth, initialHeight;
 
     resizer.addEventListener("pointerdown", e => {
-      if (!this.unlocked) return;
+      if (!this.unlocked || this.isCompact()) return;
       isResizing = true;
       startX = e.clientX;
       startY = e.clientY;
-      initialWidth = parseFloat(card.style.width) || card.offsetWidth;
-      initialHeight = parseFloat(card.style.height) || card.offsetHeight;
+      initialWidth = card.offsetWidth;
+      initialHeight = card.offsetHeight;
       
       this.zIndex++;
       card.style.zIndex = this.zIndex;
@@ -159,8 +166,8 @@ Aura.draggable = {
       if (!isResizing) return;
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
-      const newWidth = Math.max(200, initialWidth + dx);
-      const newHeight = Math.max(100, initialHeight + dy);
+      const newWidth = Math.min(this.container.clientWidth, Math.max(200, initialWidth + dx));
+      const newHeight = Math.min(this.container.clientHeight, Math.max(100, initialHeight + dy));
       
       card.style.width = newWidth + "px";
       card.style.height = newHeight + "px";
@@ -171,8 +178,8 @@ Aura.draggable = {
       isResizing = false;
       this.layout[card.id] = {
         ...this.layout[card.id],
-        width: parseFloat(card.style.width),
-        height: parseFloat(card.style.height),
+        width: card.offsetWidth / this.container.clientWidth,
+        height: card.offsetHeight / this.container.clientHeight,
         zIndex: this.zIndex
       };
       this.saveLayout();
