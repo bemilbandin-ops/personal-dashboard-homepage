@@ -148,11 +148,11 @@ test("remove deletes one record", () => {
   assert.equal(JSON.stringify(shortcuts.items), JSON.stringify([{ id: "keep" }]));
 });
 
-test("homeItems returns at most six selected records", () => {
+test("homeItems returns every selected record", () => {
   const shortcuts = loadShortcuts();
   shortcuts.items = Array.from({ length: 10 }, (_, index) => ({ id: String(index), showOnHome: index !== 1 }));
 
-  assert.equal(shortcuts.homeItems().length, 6);
+  assert.equal(shortcuts.homeItems().length, 9);
   assert.equal(shortcuts.homeItems().some(item => item.id === "1"), false);
 });
 

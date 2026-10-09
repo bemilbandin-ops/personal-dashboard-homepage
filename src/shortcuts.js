@@ -55,7 +55,7 @@ Aura.shortcuts = {
     this.renderAll();
   },
   homeItems() {
-    return this.items.filter(item => item.showOnHome).slice(0, 6);
+    return this.items.filter(item => item.showOnHome);
   },
   targetFor(item) {
     if (item.type === "windows") return Aura.launcher?.urlFor?.(item.target) || "";

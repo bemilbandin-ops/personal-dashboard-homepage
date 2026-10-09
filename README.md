@@ -12,7 +12,7 @@ Use Aura as:
 
 - **Four views:** Home, Productivity, Atmosphere, and Library switch inside one document.
 - **Editable shortcuts:** Add, edit, delete, filter, and persist web links or Windows application paths.
-- **Custom Home:** Choose which shortcuts appear on Home, with a maximum of six.
+- **Custom Home:** Choose which shortcuts appear on Home; the grid grows as needed.
 - **Productivity:** Persistent focus timer and task list with add, complete, and delete actions.
 - **Atmosphere:** WebGL animated background with enabled state, intensity, speed, and color presets.
 - **Widgets:** Clock, configurable live weather with cached fallback, temperature-unit toggle, and auto-saving scratchpad.
