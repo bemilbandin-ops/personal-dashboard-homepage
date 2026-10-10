@@ -7,7 +7,12 @@ Aura.syncConfig = Aura.syncConfig || {
 
 Aura.sync = {
   table: "user_settings",
-  keys: ["preferences", "scratchpad", "tasks", "focus-history"],
+  keys: [
+    "preferences", "scratchpad", "tasks", "focus-history", "focus-timer",
+    "shortcuts", "notes-library", "atmosphere", "weather:location", "time-tools:alarms",
+    "widgets-layout-responsive"
+  ],
+  arrayKeys: new Set(["shortcuts", "notes-library", "time-tools:alarms"]),
   client: null,
   user: null,
   session: null,
@@ -94,6 +99,16 @@ Aura.sync = {
       lastError: this.lastError,
       cloudKeys: [...this.cloudKeys]
     };
+  },
+
+  mergeArray(local, cloud, preferLocal) {
+    const merged = new Map();
+    cloud.forEach(item => merged.set(item?.id ?? JSON.stringify(item), item));
+    local.forEach(item => {
+      const id = item?.id ?? JSON.stringify(item);
+      if (preferLocal || !merged.has(id)) merged.set(id, item);
+    });
+    return [...merged.values()];
   },
 
   setStatus(status, error = null) {
@@ -265,6 +280,10 @@ Aura.sync = {
     if (!skipInit) await this.init();
     if (!this.client || !this.user) return;
 
+    const ownerKey = Aura.storage._fullKey("_sync-user");
+    const previousUserId = localStorage.getItem(ownerKey);
+    const accountChanged = Boolean(previousUserId && previousUserId !== this.user.id);
+
     const { data, error } = await this.client
       .from(this.table)
       .select("key,value,updated_at")
@@ -272,18 +291,51 @@ Aura.sync = {
 
     if (error) throw error;
 
+    if (accountChanged) {
+      this.cloudKeys.clear();
+      this.cloudTimestamps.clear();
+    }
+
     const seen = new Set();
+    const pendingSaves = new Map();
     (data || []).forEach(row => {
       if (!this.keys.includes(row.key)) return;
-      Aura.storage.setLocalOnly(row.key, row.value);
-      this.cloudTimestamps.set(row.key, new Date(row.updated_at).getTime());
+      const hasLocalValue = !accountChanged && Aura.storage.has(row.key);
+      const localValue = hasLocalValue ? Aura.storage.get(row.key, null) : null;
+      const localModifiedAt = hasLocalValue
+        ? Number(localStorage.getItem(Aura.storage._fullKey("_meta:" + row.key))) || 0
+        : 0;
+      const cloudUpdatedAt = new Date(row.updated_at).getTime();
+      const localIsNewer = localModifiedAt > cloudUpdatedAt;
+      const firstSync = localStorage.getItem(Aura.storage._fullKey(`_synced:${this.user.id}:${row.key}`)) !== "true";
+      let value = localIsNewer ? localValue : row.value;
+
+      if (accountChanged) localStorage.removeItem(Aura.storage._fullKey("_meta:" + row.key));
+
+      if (firstSync && this.arrayKeys.has(row.key) && Array.isArray(localValue) && Array.isArray(row.value)) {
+        value = this.mergeArray(localValue, row.value, localIsNewer);
+      }
+
+      if (!Aura.storage.setLocalOnly(row.key, value)) throw new Error(`Could not save synced ${row.key} locally.`);
+      this.cloudTimestamps.set(row.key, cloudUpdatedAt);
+      if (JSON.stringify(value) !== JSON.stringify(row.value)) pendingSaves.set(row.key, value);
       seen.add(row.key);
     });
     this.cloudKeys = seen;
 
-    await Promise.all(this.keys
-      .filter(key => !seen.has(key) && Aura.storage.has(key))
-      .map(key => this.saveNow(key, Aura.storage.get(key, null), { skipInit: true })));
+    this.keys.filter(key => !seen.has(key)).forEach(key => {
+      if (accountChanged) {
+        Aura.storage.removeLocalOnly(key);
+        localStorage.removeItem(Aura.storage._fullKey("_meta:" + key));
+      } else if (Aura.storage.has(key)) {
+        pendingSaves.set(key, Aura.storage.get(key, null));
+      }
+    });
+
+    await Promise.all([...pendingSaves]
+      .map(([key, value]) => this.saveNow(key, value, { skipInit: true, force: true })));
+    this.keys.forEach(key => localStorage.setItem(Aura.storage._fullKey(`_synced:${this.user.id}:${key}`), "true"));
+    localStorage.setItem(ownerKey, this.user.id);
 
     this.setStatus(`Signed in as ${this.user.email}`);
   },
@@ -308,7 +360,7 @@ Aura.sync = {
     this.saveTimers.set(key, timer);
   },
 
-  async saveNow(key, value, { skipInit = false } = {}) {
+  async saveNow(key, value, { skipInit = false, force = false } = {}) {
     if (!this.keys.includes(key)) return;
     if (!skipInit) await this.init();
     if (!this.client || !this.user) return;
@@ -317,7 +369,7 @@ Aura.sync = {
     const localModifiedAt = localModifiedStr ? parseInt(localModifiedStr, 10) : 0;
     const cloudUpdatedAt = this.cloudTimestamps.get(key);
 
-    if (cloudUpdatedAt && localModifiedAt <= cloudUpdatedAt) {
+    if (!force && cloudUpdatedAt && localModifiedAt <= cloudUpdatedAt) {
       return; // Skip upload (cloud is newer or same)
     }
 
@@ -334,6 +386,7 @@ Aura.sync = {
     if (error) throw error;
     this.cloudKeys.add(key);
     this.lastPushedTimestamps.set(key, now.getTime());
+    this.cloudTimestamps.set(key, now.getTime());
     this.setStatus(`Synced as ${this.user.email}`);
   },
 

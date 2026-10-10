@@ -201,6 +201,10 @@ Aura.shortcuts = {
   },
   init() {
     this.items = this.load();
+    Aura.sync?.onChange?.(() => {
+      this.items = this.load();
+      this.renderAll();
+    });
     document.getElementById("shortcut-save").addEventListener("click", () => {
       const error = this.upsert({
         title: document.getElementById("shortcut-title").value,

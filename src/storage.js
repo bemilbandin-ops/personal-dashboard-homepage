@@ -2,7 +2,11 @@ window.Aura = window.Aura || {};
 
 Aura.storage = {
   prefix: "aura:",
-  syncKeys: new Set(["preferences", "scratchpad", "tasks", "focus-history"]),
+  syncKeys: new Set([
+    "preferences", "scratchpad", "tasks", "focus-history", "focus-timer",
+    "shortcuts", "notes-library", "atmosphere", "weather:location", "time-tools:alarms",
+    "widgets-layout-responsive"
+  ]),
   _readyPromise: null,
   _syncScriptPromise: null,
   _fullKey(key) {
@@ -60,7 +64,7 @@ Aura.storage = {
       }
 
       const script = document.createElement("script");
-      script.src = "src/sync.js?v=sync-20260705-2";
+      script.src = "src/sync.js?v=sync-20261011-1";
       script.defer = true;
       script.dataset.auraSync = "true";
       script.addEventListener("load", () => resolve(), { once: true });

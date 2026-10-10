@@ -1,6 +1,8 @@
 window.Aura = window.Aura || {};
 
-(() => {
+(async () => {
+  await Aura.storage.ready();
+
   const defaults = {
     is24Hour: Aura.config.clock.format === "24h",
     isCelsius: true,
@@ -165,7 +167,7 @@ window.Aura = window.Aura || {};
     visibleWidgets.insertAdjacentHTML("afterend", `
       <section class="account-panel" aria-labelledby="account-sync-title">
         <h3 id="account-sync-title">Account sync</h3>
-        <small>Sync preferences, scratchpad, tasks and focus history across devices.</small>
+        <small>Sync your settings, shortcuts, notes, tasks, alarms and focus data across devices.</small>
         <input id="login-email" name="email" type="email" autocomplete="email" placeholder="Email">
         <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Password">
         <div class="account-actions">
@@ -210,20 +212,6 @@ window.Aura = window.Aura || {};
     if (controls.weatherLocation) controls.weatherLocation.value = Aura.weather?.getLocation?.().location || Aura.config.weather.location;
   }
 
-  async function persistCurrentSyncValues() {
-    const sync = await ensureSyncReady();
-    if (!sync?.getUser?.()) return;
-
-    Aura.storage.setLocalOnly("preferences", preferences);
-    Aura.storage.setLocalOnly("scratchpad", document.getElementById("scratchpad")?.value || Aura.storage.get("scratchpad", ""));
-    Aura.storage.setLocalOnly("tasks", Array.isArray(Aura.productivity?.tasks) ? Aura.productivity.tasks : Aura.storage.get("tasks", []));
-    Aura.storage.setLocalOnly("focus-history", Array.isArray(Aura.productivity?.history) ? Aura.productivity.history : Aura.storage.get("focus-history", []));
-
-    setSyncStatus("Saving sync data…");
-    await sync.pushLocal();
-    refreshAccountUi();
-  }
-
   function getCredentials() {
     return {
       email: controls.loginEmail?.value.trim() || "",
@@ -243,7 +231,10 @@ window.Aura = window.Aura || {};
       const sync = await ensureSyncReady();
       if (!sync?.[action]) throw new Error("Cloud sync is unavailable.");
       await sync[action](email, password);
-      await persistCurrentSyncValues();
+      if (sync.getUser?.()) {
+        location.reload();
+        return;
+      }
       refreshAccountUi();
     } catch (error) {
       setSyncStatus(describeSyncError(error) || "Auth failed.");
